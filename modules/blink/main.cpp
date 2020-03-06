@@ -1,14 +1,8 @@
 #include <avr/io.h>
 // #include <avr/interrupt.h>
 #include <util/delay.h>
-//#include "avr_print.h"
 #include "uart.h"
 #include "def.h"
-
-// _BV(3) => 1 << 3 => 0x08
-// PORTB = PORTB | (1 << 4);
-// set: PORTB |= (1<<BIT2); PORTB |= _BV(1) | BV(2);
-// clear: PORTB &= ~(1<<BIT2); PORTB &= _BV(1) & _BV(2);
 
 int main(void) {
   DINIT(); // simplex uart setup
@@ -18,6 +12,8 @@ int main(void) {
 
   while (1) {
     _delay_ms(500);
+    uint8_t time = 12;
+    DF("time:%u\n", time);
     DL("blink");
     led_toggle('r');
   }

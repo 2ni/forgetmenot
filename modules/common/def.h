@@ -8,36 +8,39 @@
 
 #include <avr/io.h>
 
-#define PA1 1
-#define PA2 2
-#define PA3 3
-#define PA4 4
-#define PA5 5
-#define PA6 6
-#define PA7 7
-#define PA8 8
-#define LED_G PA1
-#define LED_B PA2
-#define LED_R PA3
+// PORT B
+#define BLK      PIN0_bm
+#define DBG      PIN1_bm
+#define LED_R    PIN1_bm
+#define CS_LCD   PIN2_bm
+#define DC       PIN3_bm
+#define RST      PIN4_bm
+#define LED_B    PIN5_bm
+#define LED_G    PIN6_bm
+#define OUT1     PIN7_bm
+
+#define PORT_LED PORTB
+#define PORT_DBG PORTB
+#define PORT_LCD PORTB
 
 inline static void led_setup() {
-  PORTA.DIRSET |= (1<<LED_G);  // output
-  PORTA.OUTCLR |= (1<<LED_G);  // set low
+  PORT_LED.DIRSET = LED_G;  // output
+  PORT_LED.OUTCLR = LED_G;  // set low
 
-  PORTA.DIRSET |= (1<<LED_B);  // output
-  PORTA.OUTCLR |= (1<<LED_B);  // set low
+  PORT_LED.DIRSET = LED_B;  // output
+  PORT_LED.OUTCLR = LED_B;  // set low
 
-  PORTA.DIRSET |= (1<<LED_R);  // output
-  PORTA.OUTCLR |= (1<<LED_R);  // set low
+  PORT_LED.DIRSET = LED_R;  // output
+  PORT_LED.OUTCLR = LED_R;  // set low
 }
 
 inline static void led_on(char color) {
   if (color == 'g') {
-    PORTA.OUT |= (1<<LED_G); // set high
+    PORT_LED.OUTSET = LED_G; // set high
   } else if (color == 'b') {
-    PORTA.OUT |= (1<<LED_B);
+    PORT_LED.OUTSET = LED_B;
   } else if (color == 'r') {
-    PORTA.OUT |= (1<<LED_R);
+    PORT_LED.OUTSET = LED_R;
   }
 }
 
@@ -48,14 +51,14 @@ inline static void led_on_all() {
 }
 
 inline static int led_is_on(char color) {
-  // if (~PORTA.IN & PIN2_bm)  // check if PA2 is low
+  // if (~PORT_LED.IN & PIN2_bm)  // check if PA2 is low
   uint8_t val;
   if (color == 'g') {
-    val = PORTA.OUT & (1<<LED_G);
+    val = PORT_LED.IN & LED_G;
   } else if (color == 'b') {
-    val = PORTA.OUT & (1<<LED_B);
+    val = PORT_LED.IN & LED_B;
   } else if (color == 'r') {
-    val = PORTA.OUT & (1<<LED_R);
+    val = PORT_LED.IN & LED_R;
   }
 
   return val;
@@ -63,16 +66,16 @@ inline static int led_is_on(char color) {
 
 inline static void led_off(char color) {
   if (color == 'g') {
-    PORTA.OUT &= ~(1<<LED_G); // set low
+    PORT_LED.OUTCLR = LED_G; // set low
   } else if (color == 'b') {
-    PORTA.OUT &= ~(1<<LED_B);
+    PORT_LED.OUTCLR = LED_B;
   } else if (color == 'r') {
-    PORTA.OUT &= ~(1<<LED_R);
+    PORT_LED.OUTCLR = LED_R;
   }
 }
 
 inline static void led_off_all() {
-  // TODO faster: PORTA.OUT &= ~(1<<LED_G)...
+  // TODO faster: PORT_LED.OUT &= ~(1<<LED_G)...
   led_off('r');
   led_off('g');
   led_off('b');
@@ -80,11 +83,11 @@ inline static void led_off_all() {
 
 inline static void led_toggle(char color) {
   if (color == 'g') {
-    PORTA.OUT ^= (1<<LED_G); // invert (exclusive or)
+    PORT_LED.OUTTGL = LED_G; // invert (exclusive or)
   } else if (color == 'b') {
-    PORTA.OUT ^= (1<<LED_B);
+    PORT_LED.OUTTGL = LED_B;
   } else if (color == 'r') {
-    PORTA.OUT ^= (1<<LED_R);
+    PORT_LED.OUTTGL = LED_R;
   }
 }
 

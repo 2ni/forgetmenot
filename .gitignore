@@ -1,6 +1,7 @@
 dummy
 *.swp
 *.o
+*.done
 *.hex
 *.elf
 *.atpack
