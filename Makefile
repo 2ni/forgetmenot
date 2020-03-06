@@ -1,10 +1,11 @@
 # via https://gist.github.com/holachek/3304890
-# mmcu=avrxmega3
 #
 # .elf needed on host for debugging
 # .hex is code for programming to flash
 #
 # export PATH=/www/forgetmenot/toolchain/bin:$PATH
+#
+# call make CFLAGS= to not run in debug mode
 
 TOOLCHAIN  = ./toolchain/bin/
 DEVICE     = attiny3217
@@ -14,9 +15,11 @@ PROGRAMMER = -c usbtiny -P usb
 OBJECTS    = src/main.o
 # TBD
 # FUSES      = -U lfuse:w:0xAE:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
+CFLAGS    = -DEBUG
 
-AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE)
+AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) $(CFLAGS)
 COMPILE = $(TOOLCHAIN)avr-gcc -Wall -B pack/gcc/dev/$(DEVICE)/ -I pack/include/ -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
+SIZE = $(TOOLCHAIN)avr-objdump -Pmem-usage
 
 all: 	main.hex
 
@@ -27,7 +30,7 @@ dummy: Makefile
 	@touch $@
 	$(MAKE) -s clean
 
-.c.o:
+.c.o .cpp.o:
 	$(COMPILE) -c $< -o $@
 
 flash: 	all
@@ -51,6 +54,10 @@ main.elf: $(OBJECTS)
 main.hex: main.elf
 	rm -f main.hex
 	$(TOOLCHAIN)avr-objcopy -j .text -j .data -O ihex main.elf main.hex
+	@echo ""
+	@echo "***********************************************************"
+	@$(SIZE) $< | egrep "Program|Data|Device"
+	@echo "***********************************************************"
 
 toolchainpatch:
 	sed -i.bak 's/0x802000/__DATA_REGION_ORIGIN__/' $(find toolchain/ -type f -name 'avrxmega3*')
