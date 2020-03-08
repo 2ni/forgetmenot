@@ -18,32 +18,31 @@
 
 // DEBUG set in platformio.ini
 #ifdef DEBUG
-  #define DINIT()              uart_setup()
-  #define D(str)               uart_send_string_p(str)
-  #define DCRLF()              uart_send_string_p(PSTR("\r\n"))
-  #define DL(str)              { uart_send_string_p(PSTR(str)); DCRLF(); }
-  #define DF(format, ...)      { char buf[50]; sprintf(buf, format, __VA_ARGS__); uart_send_string(buf); DCRLF(); }
-  #define DLTUPLE(name, value) { uart_send_string_p(name); uart_send_string_p(": "); uart_send_string(value); }
+  #define DINIT()               uart_setup()
+  #define D(str)                uart_send_string_p(PSTR(str))
+  #define DCRLF()               uart_send_string_p(PSTR("\r\n"))
+  #define DL(str)               { uart_send_string_p(PSTR(str)); DCRLF(); }
+  #define DF(size, format, ...) { char buf[size]; sprintf(buf, format, __VA_ARGS__); uart_send_string(buf); DCRLF(); }
+  #define DT_C(key, value)      uart_tuple(PSTR(key), PSTR(value))
+  #define DT_S(key, value)      uart_tuple(PSTR(key), value)
+  #define DT_I(key, value)      uart_tuple(PSTR(key), value)
+  #define DT_IH(key, value)     uart_tuple(PSTR(key), value, 16)
 #else
   #define DINIT()
   #define D(str)
   #define DCRLF()
   #define DL(str)
-  #define DF(format, ...)
-  #define DLTUPLE(name, value)
+  #define DF(size, format, ...)
+  #define DTUPLE(name, value)
 #endif
 
-#define foo 123
-
-uint8_t uart_setup(void);
+void uart_setup(void);
+void uart_tuple(const char* key, const char* value);
+void uart_tuple(const char* key, uint16_t value, uint8_t base=10);
+void uart_tuple(const char* key, char* value);
 void uart_send_char(char c);
 void uart_send_string(char* s);
 void uart_send_string_p(const char* s);
-void uart_send_digit(uint16_t value);
-/*
-void DF(const char *format, ...);
-void DL(char *buf);
-void D(char *buf);
-*/
+void uart_send_digit(uint16_t value, uint8_t base=10);
 
 #endif
