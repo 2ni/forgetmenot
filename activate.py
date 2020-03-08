@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 '''
-Activates a given file, ie links modules/<file> to src/<file> and removes existing link
+Activates a given file, ie links examples/<file> to src/<file> and removes existing link
 
 https://stackoverflow.com/questions/26727314/multiple-files-for-one-argument-in-argparse-python-2-7
 https://stackoverflow.com/questions/23766689/python-argparse-arg-with-no-flag
@@ -25,10 +25,10 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 os.system('find src/ -type l -delete')
 
 # always link common functions
-if os.path.isdir('modules/common'):
-    for f in os.listdir('modules/common/'):
+if os.path.isdir('examples/common'):
+    for f in os.listdir('examples/common/'):
         if not f.endswith('.swp'):
-            os.system('ln -s ../modules/common/{f} src/'.format(f=f))
+            os.system('ln -s ../examples/common/{f} src/'.format(f=f))
 
 # if dir given, link every file from the dir
 files = []
