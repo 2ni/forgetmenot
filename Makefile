@@ -65,7 +65,7 @@ HEADERS   := $(foreach dir, $(SRC) $(EXT), $(wildcard $(dir)/*.h))
 all: 	Makefile.done $(PRJ).hex
 
 serial:
-	@if [ -z $(PORT_DBG) ]; then echo "no DBG port found"; else ./serialterminal.py -p $(PORT_DBG); fi
+	@if [ -z $(PORT_DBG) ]; then echo "no DBG port found"; else ./serialterminal.py -p $(PORT_DBG) -d; fi
 
 ports:
 	@echo "available ports:"
