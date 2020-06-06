@@ -7,8 +7,17 @@ This is a complete new version of a [sensor based on the ATtiny88](https://githu
 It's more or a less a boilerplate at the moment. I'm working on the hardware.
 
 ### open points
-- [ ] create hardware board
+- [X] create hardware board
 - [ ] write according software
+- [ ] pyupdi always needs reinitialisation, which probably makes the write process slow
+- [ ] check alternative to pyupdi: [avr updi](https://metacpan.org/release/Device-AVR-UPDI) needs newer perl version though
+
+### installation
+```
+pyenv virtualenv 3.7.4 forgetmenot
+pyenv local forgetmenot
+pip install -r requirements
+```
 
 ### useful links
 - no support megatinycores on pio yet: https://github.com/platformio/platform-atmelavr/issues/83#issuecomment-528268480

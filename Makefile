@@ -11,8 +11,12 @@
 
 PRJ        = main
 DEVICE     = attiny3217
-CLK        = 20000000
-PRG        = usbtiny
+DEVICE_PY  = $(shell echo $(DEVICE) | sed -e 's/^.*\(tiny\d*\)/\1/')
+# default prescaler is 6 -> 3.3MHz
+# max frequency is 13.3MHz for 3.3v (see p.554)
+# set to 10MHz with cmd: _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc);
+CLK        = 10000000
+# PRG        = usbtiny
 
 # TBD FUSES
 # see http://www.engbedded.com/fusecalc/
@@ -35,7 +39,13 @@ CFLAGS     = -Wall -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -B pack/gcc/dev/$(DEVICE)/
 CPPFLAGS   =
 
 # executables
-AVRDUDE    = avrdude -c $(PRG) -p $(DEVICE) -b 19200 -P usb
+#
+# !!!!!!!!!!! always 1st connect programmer cable !!!!!!!!!! 
+#
+PORT_PRG   = $(shell ls -U /dev/cu.wchusbserial*|tail -1)
+PORT_DBG   = $(shell if [ `ls -U /dev/cu.wchusbserial*|wc -l` -gt 1 ]; then ls -U /dev/cu.wchusbserial*|head -1; fi)
+PYUPDI     = pyupdi.py -d $(DEVICE_PY) -c $(PORT_PRG)
+# AVRDUDE    = avrdude -c $(PRG) -p $(DEVICE) -b 19200 -P usb
 OBJCOPY    = $(BIN)avr-objcopy
 OBJDUMP    = $(BIN)avr-objdump
 SIZE       = $(BIN)avr-objdump -Pmem-usage
@@ -54,17 +64,37 @@ HEADERS   := $(foreach dir, $(SRC) $(EXT), $(wildcard $(dir)/*.h))
 # compile all files
 all: 	Makefile.done $(PRJ).hex
 
+serial:
+	@if [ -z $(PORT_DBG) ]; then echo "no DBG port found"; else ./serialterminal.py -p $(PORT_DBG); fi
+
+ports:
+	@echo "available ports:"
+	@unset CLICOLOR &&  ls -1t /dev/cu.wchusbserial* && export CLICOLOR=1
+	@echo "configuration"
+	@echo "PRG: $(PORT_PRG)"
+	@if [ ! -z $(PORT_DBG) ]; then echo "DBG: $(PORT_DBG)"; fi
+
+
 # check programmer connectivity
 test:
-	$(AVRDUDE) -v
+	$(PYUPDI) -iv
+
+# read out fuses
+readfuse:
+	$(PYUPDI) -fr
+
+# write fuses to mcu
+# TODO (this is just an example)
+writefuse:
+	$(PYUPDI) -fs 0:0x00 1:0x00
 
 # flash program to mcu
 flash: all
-	$(AVRDUDE) -U flash:w:$(PRJ).hex:i
+	@echo "flashing to $(PORT_PRG). Pls wait..."
+	@$(PYUPDI) -f $(PRJ).hex && afplay /System/Library/Sounds/Ping.aiff -v 30
 
-# write fuses to mcu
-fuse:
-	$(AVRDUDE) -U lfuse:w:$(LFU):m -U hfuse:w:$(HFU):m -U efuse:w:$(EFU):m
+reset:
+	@$(PYUPDI) -r && afplay /System/Library/Sounds/Ping.aiff -v 30
 
 # generate disassembly files for debugging
 disasm: $(PRJ).elf

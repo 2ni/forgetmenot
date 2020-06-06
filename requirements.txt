@@ -1,2 +1,2 @@
-pyserial
-esptool
+https://github.com/mraardvark/pyupdi/archive/master.zip
+pySerial

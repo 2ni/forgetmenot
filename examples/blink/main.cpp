@@ -6,12 +6,20 @@
 #include <string.h>
 
 int main(void) {
-  DINIT(); // simplex uart setup
+  _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
+  // _PROTECTED_WRITE(CLKCTRL.MCLKCTRLA, CLKCTRL_CLKOUT_bm); // output clk to PB5
+
+  DINIT();
+
   DL("Hello there");
 
   led_setup();
+  led_flash('g', 3);
+  led_on('g');
 
   while (1) {
+    DL("blink");
+    /*
     // debug output examples
     uint16_t time = 14530;        // 0x38C2
     DT_I("uint", time);           // uint: 14530
@@ -21,9 +29,11 @@ int main(void) {
     char var[5];
     strcpy(var, "test");
     DT_S("variable char", var);   // variable char: test
+    */
 
     // blink the led
-    led_toggle('r');
-    _delay_ms(500);
+    led_toggle('b');
+    led_toggle('g');
+    _delay_ms(1000);
   }
 }

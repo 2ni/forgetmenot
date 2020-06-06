@@ -56,8 +56,12 @@ inline static void led_setup() {
   PORT_LED.DIRSET = LED_B;  // output
   PORT_LED.OUTCLR = LED_B;  // set low
 
+  /*
+   * DBG used for now
+   *
   PORT_LED.DIRSET = LED_R;  // output
   PORT_LED.OUTCLR = LED_R;  // set low
+  */
 }
 
 inline static void led_on(char color) {
@@ -120,9 +124,9 @@ inline static void led_toggle(char color) {
 inline static void led_flash(char color, uint8_t num) {
   for (uint8_t c=0; c<num; c++) {
     led_on(color);
-    _delay_ms(10);
+    _delay_ms(100);
     led_off(color);
-    if (c!= num-1) _delay_ms(200); // no delay if last cycle
+    if (c!= num-1) _delay_ms(100); // no delay if last cycle
   }
 }
 

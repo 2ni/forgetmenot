@@ -1,4 +1,9 @@
 /*
+ * simple bitbanging (software) UART to debug output
+ * write only
+ *
+ * TODO: use clk interrupts
+ * TODO: use USART TxD (PB2) from chip instead of software solution
  * inspidred by
  * - http://www.justgeek.de/a-simple-simplex-uart-for-debugging-avrs/
  * - https://github.com/MartinD-CZ/AVR-Li-Ion-charger/blob/master/firmware/ATtiny%20USB%20charger/
@@ -12,11 +17,11 @@
 #include "def.h"
 
 #define UART_BPS 19200
-#define TX_HIGH    PORT_DBG.OUTCLR |= (1<<DBG)
-#define TX_LOW     PORT_DBG.OUT    |= (1<<DBG)
-#define UART_DELAY _delay_us(F_CPU / (float) UART_BPS)
+#define TX_HIGH    PORT_DBG.OUTSET = DBG
+#define TX_LOW     PORT_DBG.OUTCLR = DBG
+#define UART_DELAY _delay_us(1e6 / (float) UART_BPS) // 19200 -> 52usec
 
-// DEBUG set in platformio.ini
+// DEBUG set in Makefile
 #ifdef DEBUG
   #define DINIT()               uart_setup()
   #define D(str)                uart_send_string_p(PSTR(str))
