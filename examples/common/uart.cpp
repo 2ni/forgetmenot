@@ -1,10 +1,10 @@
 /*
- * library to send debug information to UART
+ * library to send debug information to UART (bit banging version)
  * only tx -> rx connection is needed
  *
  * pin DBG is used for this purpose
  *
- * use make terminal to run UART
+ * use make serial to run UART
  *
  */
 
