@@ -50,6 +50,7 @@ mkdir pack
 unzip Atmel.ATtiny_DFP.1.4.283.atpack -d pack/
 ```
 
+alternative toolchain: https://github.com/MarkR42/robotbits/tree/master/avr_toolchain
 
 ### old links trying to get things working
 - https://www.avrfreaks.net/forum/solved-compiling-attiny1607-or-other-0-series1-series-avr-gcc

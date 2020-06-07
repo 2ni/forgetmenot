@@ -7,6 +7,8 @@ dummy
 *.hex
 *.elf
 *.atpack
+*.sym
+*.asm
 pack/
 toolchain/
 src/
