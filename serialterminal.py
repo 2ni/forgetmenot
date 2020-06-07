@@ -18,13 +18,14 @@ parser.add_argument('-d', '--datestamp', action='store_true', help='show datesta
 
 args = parser.parse_args()
 
-print("Listening on {port}, {baud}".format(port=args.port, baud=args.baudrate))
+print("-- Miniterm on {port} {baud},8,N,1 --".format(port=args.port, baud=args.baudrate))
 
 printTimestamp = True
 if not args.datestamp:
     printTimestamp = False
 
-client = serial.Serial(args.port, args.baudrate, timeout=.1)
+# 8bits, parity none, stop bit
+client = serial.Serial(args.port, args.baudrate, timeout=1)
 try:
     while True:
         data = client.read()
@@ -33,7 +34,7 @@ try:
                 print('{}: '.format(dt.now().strftime("%H:%M:%S.%f")[:-5]), end='')
                 printTimestamp = False
 
-            print(data.decode('utf-8'), end='')
+            print(data.decode('utf-8'), end='', flush=True)
 
             if args.datestamp and ord(data) == 10:
                 printTimestamp = True
