@@ -8,6 +8,7 @@
 # export PATH=/www/forgetmenot/toolchain/bin:$PATH
 #
 # run "make FLAGS=" to not run in debug mode
+.PHONY: all clean
 
 PRJ        = main
 DEVICE     = attiny3217
@@ -16,7 +17,6 @@ DEVICE_PY  = $(shell echo $(DEVICE) | sed -e 's/^.*\(tiny\d*\)/\1/')
 # max frequency is 13.3MHz for 3.3v (see p.554)
 # set to 10MHz with cmd: _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc);
 CLK        = 10000000
-# PRG        = usbtiny
 
 # TBD FUSES
 # see http://www.engbedded.com/fusecalc/
@@ -27,16 +27,20 @@ EFU        = 0xFF
 SRC        = ./src
 EXT        =
 
-LIB        = ./toolchain/avr/include/
-BIN        = ./toolchain/bin/
+FLAGS      = -DDEBUG
+CPPFLAGS   =
+
+# toolchain_microchip
+# BIN        = ./toolchain/bin/
+# LIB        = ./toolchain_microchip/avr/include/
+# CFLAGS     = -Wall -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -B toolchain_microchip/pack/gcc/dev/$(DEVICE)/ -I toolchain_microchip/pack/include/ -I $(LIB) $(FLAGS)
+
+# toolchain_markr42
+LIB        = ./toolchain_markr42/avr/avr/include/
+BIN        = ./toolchain_markr42/avr/bin/
+CFLAGS     = -Wall -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -I $(LIB) $(FLAGS)
 
 # ********************************************************
-
-INCLUDE   := $(foreach dir, $(EXT), -I$(dir))
-
-FLAGS      = -DDEBUG
-CFLAGS     = -Wall -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -B pack/gcc/dev/$(DEVICE)/ -I pack/include/ -I $(LIB) $(FLAGS)
-CPPFLAGS   =
 
 # executables
 #
@@ -45,7 +49,6 @@ CPPFLAGS   =
 PORT_PRG   = $(shell ls -U /dev/cu.wchusbserial*|tail -1)
 PORT_DBG   = $(shell if [ `ls -U /dev/cu.wchusbserial*|wc -l` -gt 1 ]; then ls -U /dev/cu.wchusbserial*|head -1; fi)
 PYUPDI     = pyupdi.py -d $(DEVICE_PY) -c $(PORT_PRG)
-# AVRDUDE    = avrdude -c $(PRG) -p $(DEVICE) -b 19200 -P usb
 OBJCOPY    = $(BIN)avr-objcopy
 OBJDUMP    = $(BIN)avr-objdump
 SIZE       = $(BIN)avr-objdump -Pmem-usage
@@ -56,24 +59,50 @@ CFILES     = $(wildcard $(SRC)/*.c)
 EXTC      := $(foreach dir, $(EXT), $(wildcard $(dir)/*.c))
 CPPFILES   = $(wildcard $(SRC)/*.cpp)
 EXTCPP    := $(foreach dir, $(EXT), $(wildcard $(dir)/*.cpp))
-OBJ        = $(CFILES:.c=.o) $(EXTC:.c=.o) $(CPPFILES:.cpp=.o) $(EXTCPP:.cpp=.o)
-HEADERS   := $(foreach dir, $(SRC) $(EXT), $(wildcard $(dir)/*.h))
-
+OBJ        = $(CFILES:.c=.c.o) $(EXTC:.c=.c.o) $(CPPFILES:.cpp=.cpp.o) $(EXTCPP:.cpp=.cpp.o)
+DEPENDS   := $(CFILES:.c=.d) $(EXTC:.c=.d) $(CPPFILES:.cpp=.cpp.d) $(EXTCPP:.cpp=.cpp.d)
 
 # user target
 # compile all files
-all: 	Makefile.done $(PRJ).hex
+all: 	$(PRJ).hex
 
+clean:
+	rm -f *.hex *.elf
+	rm -f $(OBJ) $(DEPENDS)
+
+# objects from c files
+%.c.o: %.c Makefile
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+
+# objects from c++ files
+%.cpp.o: %.cpp Makefile
+	$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
+
+# linking, create elf
+$(PRJ).elf: $(OBJ) Makefile
+	$(CC) $(CFLAGS) -o $(PRJ).elf $(OBJ)
+
+# create hex
+$(PRJ).hex: $(PRJ).elf Makefile
+	$(OBJCOPY) -j .text -j .data -j .rodata -O ihex $(PRJ).elf $(PRJ).hex
+	@echo ""
+	@echo "***********************************************************"
+	@$(SIZE) $(PRJ).elf | egrep "Program|Data|Device"
+	@echo "***********************************************************"
+
+-include $(DEPENDS)
+
+# start debugging terminal
 serial:
 	@if [ -z $(PORT_DBG) ]; then echo "no DBG port found"; else ./serialterminal.py -p $(PORT_DBG) -d; fi
 
+# show available uart ports for flashing and debugging terminal
 ports:
 	@echo "available ports:"
 	@unset CLICOLOR &&  ls -1t /dev/cu.wchusbserial* && export CLICOLOR=1
 	@echo "configuration"
 	@echo "PRG: $(PORT_PRG)"
 	@if [ ! -z $(PORT_DBG) ]; then echo "DBG: $(PORT_DBG)"; fi
-
 
 # check programmer connectivity
 test:
@@ -88,67 +117,24 @@ readfuse:
 writefuse:
 	$(PYUPDI) -fs 0:0x00 1:0x00
 
-# flash program to mcu
+# flash hex to mcu
 flash: all
 	@echo "flashing to $(PORT_PRG). Pls wait..."
 	@$(PYUPDI) -f $(PRJ).hex && afplay /System/Library/Sounds/Ping.aiff -v 30
 
+# reset device
 reset:
 	@$(PYUPDI) -r && afplay /System/Library/Sounds/Ping.aiff -v 30
 
 # generate disassembly files for debugging
 disasm: $(PRJ).elf
-	$(OBJDUMP) -d $(PROJ).elf
+	#$(OBJDUMP) -d $(PRJ).elf
+	$(OBJDUMP) -S $(PRJ).elf > $(PRJ).asm
+	$(OBJDUMP) -t $(PRJ).elf > $(PRJ).sym
+	$(OBJDUMP) -t $(PRJ).elf |grep 00 |sort  > $(PRJ)-sorted.sym
 
-# cleanup
-clean:
-	rm -rf *.hex *.elf *.o
-	$(foreach dir, $(EXT) $(SRC), rm -f $(dir)/*.o;)
+patch_toolchain_microchip:
+	sed -i.bak 's/0x802000/__DATA_REGION_ORIGIN__/' $(find toolchain_microchip/ -type f -name 'avrxmega3*')
 
-# objects from c files
-.c.o: $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# objects from c++ files
-.cpp.o: $(HEADERS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
-
-# elf
-$(PRJ).elf: $(OBJ)
-	$(CC) $(CFLAGS) -o $(PRJ).elf $(OBJ)
-
-# hex
-$(PRJ).hex: $(PRJ).elf
-	rm -f $(PRJ).hex
-	$(OBJCOPY) -j .text -j .data -O ihex $(PRJ).elf $(PRJ).hex
-	@echo ""
-	@echo "***********************************************************"
-	@$(SIZE) $< | egrep "Program|Data|Device"
-	@echo "***********************************************************"
-
-# make clean if makefile altered
-Makefile.done: Makefile
-	make clean
-	@touch $@
-
-#show_fuses:
-#	@$(AVRDUDE) 2>&1 | grep Fuses
-#
-#toolchainpatch:
-#	sed -i.bak 's/0x802000/__DATA_REGION_ORIGIN__/' $(find toolchain/ -type f -name 'avrxmega3*')
-#
-
-# # show available terminals
-# # connect debug pin to ttl
-# terminals:
-# 	@./handle_serial.py --list --port=$$port
-
-# # run terminal, ctrl+c to stop
-# terminal:
-# 	@./handle_serial.py --monitor --port=$$port
-
-# # terminal with timestamps
-# terminalt:
-# 	@./handle_serial.py --monitor --port=$$port | ./ts
-
-# ft: flash terminal
+patch_toolchain_markr42:
+	sed -i.bak 's/PREFIX=[^ ]*/PREFIX=$$(pwd)\/avr/' toolchain_markr42/build.sh

@@ -10,5 +10,5 @@ dummy
 *.sym
 *.asm
 pack/
-toolchain/
+toolchain_*
 src/
