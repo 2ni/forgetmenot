@@ -1,9 +1,8 @@
-#include <avr/io.h>
-// #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <string.h>
+
 #include "uart.h"
 #include "def.h"
-#include <string.h>
 
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
@@ -11,29 +10,24 @@ int main(void) {
 
   DINIT();
 
-  DL("Hello there");
-
   led_setup();
   led_flash('g', 3);
   led_on('g');
 
-  while (1) {
-    DL("blink");
-    /*
-    // debug output examples
-    uint16_t time = 14530;        // 0x38C2
-    DT_I("uint", time);           // uint: 14530
-    DT_IH("uint hex", time);      // uint hex: 0x38C2
-    DF(10, "time:%u\n", time);    // time: 14530
-    DT_C("fixed char", "value");  // char: value
-    char var[5];
-    strcpy(var, "test");
-    DT_S("variable char", var);   // variable char: test
-    */
+  // debug output examples
+  uint16_t time = 14530;        // 0x38C2
+  DT_I("uint", time);           // uint: 14530
+  DT_IH("uint hex", time);      // uint hex: 0x38C2
+  DF("time:%u", time);    // time: 14530
+  DT_C("fixed char", "value");  // char: value
+  char var[5];
+  strcpy(var, "test");
+  DT_S("variable char", var);   // variable char: test
 
-    // blink the led
+  while (1) {
     led_toggle('b');
     led_toggle('g');
-    _delay_ms(1000);
+
+    _delay_ms(500);
   }
 }

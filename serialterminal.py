@@ -31,7 +31,11 @@ try:
         data = client.read()
         if data:
             if printTimestamp:
-                print('{}: '.format(dt.now().strftime("%H:%M:%S.%f")[:-5]), end='')
+                now = dt.now()
+                precision = round(int(now.strftime('%f')) / 100000)
+
+                print('{}.{}: '.format(now.strftime("%H:%M:%S"), precision), end='')
+                # print('{}: '.format(now.strftime("%H:%M:%S.%f")[:-5]), end='')
                 printTimestamp = False
 
             print(data.decode('utf-8'), end='', flush=True)

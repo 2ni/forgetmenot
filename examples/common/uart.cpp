@@ -17,14 +17,11 @@
 #include "def.h"
 
 /*
- * setup function which defines dbg pin
+ * setup uart and tx pin
  */
 void uart_setup(void) {
-  // setup tx pin
   PORT_DBG.DIRSET = DBG;  // output
-  TX_HIGH;
-
-  _delay_ms(400); // ensure serial is ready
+  UART_HIGH;
 }
 
 /*
@@ -77,21 +74,18 @@ void uart_tuple(const char* key, char* value) {
 /*
  * sends a single char to the uart
  */
-void uart_send_char(char c) {
-  uint8_t i = 8;
-  // start bit
-  TX_LOW; UART_DELAY;
-  while(i){
-    if(c & 1){
-      TX_HIGH; UART_DELAY;
-    } else {
-      TX_LOW; UART_DELAY;
-    }
+void uart_send_char(unsigned char c) {
+  UART_LOW; // start bit
+  UART_DELAY;
+  uint8_t i;
+  for (i=8; i!=0; --i) {
+    if (c & 1) UART_HIGH;
+    else      UART_LOW;
     c = c >> 1;
-    i--;
+    UART_DELAY;
   }
-  // stop bits
-  TX_HIGH; UART_DELAY;
+  UART_HIGH; // stop bit
+  UART_DELAY;
 }
 
 /*
