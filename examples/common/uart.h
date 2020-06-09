@@ -49,5 +49,6 @@ void uart_send_char(unsigned char c);
 void uart_send_string(char* s);
 void uart_send_string_p(const char* s);
 void uart_send_digit(uint16_t value, uint8_t base=10);
+void uart_int2float(char *buf, uint16_t value, uint8_t precision=2);
 
 #endif

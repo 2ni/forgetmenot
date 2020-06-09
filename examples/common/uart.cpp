@@ -9,6 +9,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <avr/pgmspace.h>
 #include <stdint.h>
 #include <avr/io.h>
@@ -110,4 +111,18 @@ void uart_send_digit(uint16_t value, uint8_t base) {
   char buf[6];
   itoa(value, buf, base);
   uart_send_string(buf);
+}
+
+/*
+ * convert an int to a char array
+ * eg 345 -> "3.45"
+ */
+void uart_int2float(char *buf, uint16_t value, uint8_t precision) {
+  itoa(value, buf, 10);
+  uint8_t len = strlen(buf);
+  for (uint8_t i=len; i>len-precision; i--) {
+    buf[i] = buf[i-1];
+  }
+  buf[len-precision] = '.';
+  buf[len+1] = '\0';
 }
