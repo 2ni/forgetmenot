@@ -32,9 +32,17 @@ try:
         if data:
             if printTimestamp:
                 now = dt.now()
-                precision = round(int(now.strftime('%f')) / 100000)
+                seconds = int(now.strftime('%S'))
+                micros = int(now.strftime('%f'))
+                precision = round(micros / 100000)
+                if precision == 10:
+                    seconds += 1
+                    precision = 0
 
-                print('{}.{}: '.format(now.strftime("%H:%M:%S"), precision), end='')
+                print('{now}:{seconds:02d}.{precision}: '.format(
+                    now=now.strftime("%H:%M"),
+                    seconds=seconds,
+                    precision=precision), end='')
                 # print('{}: '.format(now.strftime("%H:%M:%S.%f")[:-5]), end='')
                 printTimestamp = False
 
