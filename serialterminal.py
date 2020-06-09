@@ -10,6 +10,7 @@ ser.write("Hello".encode())
 import serial
 import argparse
 from datetime import datetime as dt
+import sys
 
 parser = argparse.ArgumentParser(description='simpler serial port listener', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-p', '--port', type=str, default='', required=True, help='give port to listen from, eg "/dev/cu.wchusbserial1410"')
@@ -53,3 +54,6 @@ try:
 
 except KeyboardInterrupt:
     pass
+except OSError:
+    print("no port found")
+    sys.exit(0)
