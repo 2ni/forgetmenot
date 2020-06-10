@@ -47,7 +47,10 @@ try:
                 # print('{}: '.format(now.strftime("%H:%M:%S.%f")[:-5]), end='')
                 printTimestamp = False
 
-            print(data.decode('utf-8'), end='', flush=True)
+            try:
+                print(data.decode('utf-8'), end='', flush=True)
+            except UnicodeDecodeError:
+                pass
 
             if args.datestamp and ord(data) == 10:
                 printTimestamp = True
