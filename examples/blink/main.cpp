@@ -3,12 +3,14 @@
 
 #include "uart.h"
 #include "def.h"
+#include "led.h"
 
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
   // _PROTECTED_WRITE(CLKCTRL.MCLKCTRLA, CLKCTRL_CLKOUT_bm); // output clk to PB5
 
   DINIT();
+  DL("Hello.");
 
   led_setup();
   led_flash('g', 3);
