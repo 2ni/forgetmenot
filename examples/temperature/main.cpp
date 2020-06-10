@@ -1,5 +1,4 @@
 #include <util/delay.h>
-#include <string.h>
 
 #include "uart.h"
 #include "def.h"
