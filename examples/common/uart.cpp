@@ -53,7 +53,7 @@ void uart_tuple(const char* key, uint16_t value, uint8_t base) {
   _uart_send_tuple_key(key);
   char buf[6];
   if (base==16) {
-    sprintf(buf, "%04x", value);
+    sprintf(buf, "0x%02x", value);
   } else {
     itoa(value, buf, base);
   }
