@@ -53,6 +53,7 @@ uint16_t measure_temperature(char device) {
   ADC1.COMMAND |= 1;
   while (!(ADC1.INTFLAGS & ADC_RESRDY_bm));
 
+  ADC1.CTRLA = 0;                       // disable adc
   return adc2temp(ADC1.RES);
 }
 
