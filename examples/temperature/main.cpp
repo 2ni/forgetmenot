@@ -1,7 +1,7 @@
 #include <util/delay.h>
 
+#include "pins.h"
 #include "uart.h"
-#include "def.h"
 #include "led.h"
 #include "sensors.h"
 

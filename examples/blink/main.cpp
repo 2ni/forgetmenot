@@ -1,8 +1,8 @@
 #include <util/delay.h>
 #include <string.h>
 
+#include "pins.h"
 #include "uart.h"
-#include "def.h"
 #include "led.h"
 
 int main(void) {

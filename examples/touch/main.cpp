@@ -1,45 +1,10 @@
-#include <util/delay.h>
-#include <string.h>
-
-#include "uart.h"
-#include "def.h"
-#include "led.h"
-
 /*
- * https://github.com/tuomasnylund/avr-capacitive-touch/blob/master/code/touch.c
+ * Simple capacitive touch based on adc
+ * inspired by
+ * - https://github.com/nerdralph/nerdralph/blob/master/avr/adctouch.c
+ * - https://github.com/tuomasnylund/avr-capacitive-touch/blob/master/code/touch.c
+ * - https://github.com/martin2250/ADCTouch/blob/master/src/ADCTouch.cpp
  *
-typedef struct {
-    volatile uint8_t *port;    //PORTx register for pin
-    volatile uint8_t portmask; //mask for the bit in port
-    volatile uint8_t mux;      //ADMUX value for the channel
-    uint16_t min;
-    uint16_t max;
-} touch_channel_t;
-
-static touch_channel_t btn1 = {
-    .mux = 7,
-    .port = &PORTF,
-    .portmask = (1<<PF7),
-    .min = 500,
-    .max = 800
-};
-
-touch_measure(&btn1);
-
-touch_measure(*channe) {
-  channerl->portmask;
-}
-*/
-
-
-// PC5 = AIN11 (ADC1)
-#define PORT_BUTTON     PORTC
-#define PIN_BUTTON      PIN5_bm
-#define ADC_BUTTON_gc   ADC_MUXPOS_AIN11_gc
-#define BUTTON_CTRL     PIN5CTRL
-#define PORT_ADC        ADC1
-
-/*
  * Ctouch: capacity on touch pin
  * Csh   : capacity s/h of adc (sample and hold)
  *
@@ -56,37 +21,34 @@ touch_measure(*channe) {
  *
  */
 
+#include <util/delay.h>
+#include <string.h>
+
+#include "pins.h"
+#include "uart.h"
+#include "led.h"
+#include "touch.h"
+
+/*
+ * this function was integrated into TOUCH but is kept here for testing purposes
+ */
 uint16_t touch() {
+  pin_touch.port_adc->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+
   uint16_t result;
+  set_direction(pin_touch, 0);           // set output and low to discharge touch
+  get_adc(pin_touch, ADC_MUXPOS_GND_gc); // discharge s/h cap by setting muxpos to gnd and run a measurement
 
-  PORT_BUTTON.DIRSET = PIN_BUTTON; // set output and low to discharge touch
-  PORT_ADC.MUXPOS = ADC_MUXPOS_GND_gc; // discharge s/h cap by setting muxpos = gnd and run
-  PORT_ADC.CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
-  PORT_ADC.COMMAND |= 1;
-  while (!(PORT_ADC.INTFLAGS & ADC_RESRDY_bm));
-  result = PORT_ADC.RES;
-
-  PORT_BUTTON.DIRCLR = PIN_BUTTON; // set input with pullup to charge touch
-  PORT_BUTTON.BUTTON_CTRL |= PORT_PULLUPEN_bm;
+  set_direction(pin_touch, 1);           // set input with pullup to charge touch
+  set_pullup(pin_touch, 0);
   _delay_us(10);
-  PORT_BUTTON.BUTTON_CTRL &= ~PORT_PULLUPEN_bm; // disable pullup
+  set_pullup(pin_touch, 1);              // disable pullup
 
-  // enable adc, equalize s/h cap charge with touch charge
-  PORT_ADC.MUXPOS =  ADC_BUTTON_gc;
-  PORT_ADC.CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
-  PORT_ADC.COMMAND |= 1;
-  while (!(PORT_ADC.INTFLAGS & ADC_RESRDY_bm));
-  result = PORT_ADC.RES;
-
-  PORT_ADC.CTRLA = 0; // disable adc
+  // enable adc, equalize s/h cap charge with touch charge by setting muxpos and running measurement
+  result = get_adc(pin_touch);
 
   return result;
 }
-
-void touch_init(void) {
-  PORT_ADC.CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
-}
-
 
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
@@ -97,6 +59,18 @@ int main(void) {
   led_setup();
   led_flash('g', 3);
 
+  // use this class or the commented function below
+  TOUCH button(pin_touch);
+
+  while(1) {
+    if (button.was_pressed()) {
+      led_on('g');
+      _delay_ms(1000);
+      led_off('g');
+    }
+  }
+
+  /*
   touch_init();
 
   uint16_t avg = 0;
@@ -125,4 +99,5 @@ int main(void) {
     // DF("value: %u", v);
     // _delay_ms(200);
   }
+  */
 }

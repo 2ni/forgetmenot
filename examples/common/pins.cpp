@@ -1,0 +1,59 @@
+#include "pins.h"
+
+pin_t pin_touch = { .port = &PORTC, .pin = 5, .port_adc = &ADC1, .pin_adc = 11 }; // PC5
+pin_t pin_moist = { .port = &PORTC, .pin = 1, .port_adc = &ADC1, .pin_adc = 7  }; // PC1
+
+
+/*
+ * set input / output for a pin
+ * ie set_direction(touch); // defines touch as output
+ *
+ * default: output
+ */
+void set_direction(pin_t pin, uint8_t input) {
+  if (input) pin.port->DIRCLR = (1<<pin.pin);
+  else pin.port->DIRSET = (1<<pin.pin);
+}
+
+/*
+ * set pullup or clear it for a pin
+ * ie set_pullup(touch); // activates pullup on touch
+ *
+ * default: set pullup
+ */
+void set_pullup(pin_t pin, uint8_t clear) {
+  register8_t *pctrl = &pin.port->PIN0CTRL;
+  pctrl += pin.pin;
+
+  if (clear) *pctrl &= ~PORT_PULLUPEN_bm;
+  else *pctrl |= PORT_PULLUPEN_bm;
+}
+
+/*
+ * check if adc on the pin is running
+ * ie while(adc_is_running(pin_touch));
+ */
+uint8_t adc_is_running(pin_t pin) {
+  return !(pin.port_adc->INTFLAGS & ADC_RESRDY_bm);
+}
+
+/*
+ * return adc measurement on pin
+ * muxpos can be set to ADC_MUXPOS_GND_gc
+ * if muxpos not set it takes muxpos from pin.pin_adc
+ *
+ * returns measured value
+ */
+uint16_t get_adc(pin_t pin, int8_t muxpos) {
+  // if muxpos not defined, use muxpos of pin
+  if (muxpos == -1) {
+    pin.port_adc->MUXPOS = ((ADC_MUXPOS_AIN0_gc + pin.pin_adc) << 0);
+  } else {
+    pin.port_adc->MUXPOS = muxpos;
+  }
+  pin.port_adc->CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
+  pin.port_adc->COMMAND |= 1;
+  while (adc_is_running(pin));
+
+  return pin.port_adc->RES;
+}

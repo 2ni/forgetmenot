@@ -8,7 +8,7 @@
 
 #include <avr/io.h>
 #include <util/delay.h>
-#include "def.h"
+#include "pins.h"
 
 void led_setup();
 void led_on(char color);

@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <avr/io.h>
-#include "def.h"
+#include "pins.h"
 
 #define UART_BPS   19200
 #define UART_DELAY _delay_us(1000000.0 / (float) UART_BPS) // 19200 -> 52usec

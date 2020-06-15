@@ -6,8 +6,9 @@
  */
 
 #include <avr/interrupt.h>
+
+#include "pins.h"
 #include "uart.h"
-#include "def.h"
 #include "led.h"
 
 #define timer_bm 0x01

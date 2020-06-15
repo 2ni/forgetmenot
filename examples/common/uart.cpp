@@ -15,7 +15,6 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include "uart.h"
-#include "def.h"
 
 /*
  * setup uart and tx pin

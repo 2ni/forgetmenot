@@ -2,8 +2,8 @@
  * pin configuration settings for forgetmenot
  */
 
-#ifndef __DEF_H__
-#define __DEF_H__
+#ifndef __PINS_H__
+#define __PINS_H__
 
 #include <avr/io.h>
 
@@ -36,16 +36,27 @@
 
 // PORT C
 #define TEMPBOARD  PIN0_bm // temp1
-#define MOIST      PIN1_bm
 #define TEMPSENSOR PIN2_bm // temp2
 #define HALL       PIN3_bm
 #define MULTI      PIN4_bm
-#define TOUCH      PIN5_bm
 
-#define PORT_MOIST PORTC
 #define PORT_TEMP  PORTC
 #define PORT_HALL  PORTC
-#define PORT_TOUCH PORTC
 #define PORT_HALL  PORTC
+
+typedef struct {
+  PORT_t *port;
+  uint8_t pin;
+  ADC_t *port_adc;
+  uint8_t pin_adc;
+} pin_t;
+
+extern pin_t pin_touch, pin_moisture;
+
+void set_direction(pin_t pin, uint8_t input=0);
+void set_pullup(pin_t pin, uint8_t clear=0);
+
+uint8_t adc_is_running(pin_t pin);
+uint16_t get_adc(pin_t pin, int8_t muxpos=-1);
 
 #endif

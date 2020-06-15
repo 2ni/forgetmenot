@@ -40,13 +40,8 @@ uint16_t measure_temperature(char device) {
   }
 
   ADC1.MUXPOS = MUXPOS;
-  ADC1.CTRLC = ADC_PRESC_DIV64_gc
-    | ADC_REFSEL_INTREF_gc
-    | (0<<ADC_SAMPCAP_bp);
-
-  ADC1.CTRLA = (1<<ADC_ENABLE_bp)
-    | (0<<ADC_FREERUN_bp)
-    | ADC_RESSEL_10BIT_gc;
+  ADC1.CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
+  ADC1.CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
 
   VREF.CTRLC |= VREF_ADC1REFSEL_1V5_gc;
 
