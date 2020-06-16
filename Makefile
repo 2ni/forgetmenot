@@ -38,7 +38,10 @@ CPPFLAGS   =
 # toolchain_markr42
 LIB        = ./toolchain_markr42/avr/avr/include/
 BIN        = ./toolchain_markr42/avr/bin/
-CFLAGS     = -Wall -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -I $(LIB) $(FLAGS)
+
+# -Wl,-gc-sections is used to not include unused code in binary
+#  https://stackoverflow.com/questions/14737641/have-linker-remove-unused-object-files-for-avr-gcc
+CFLAGS     = -Wall -Wl,-gc-sections -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -I $(LIB) $(FLAGS)
 
 # ********************************************************
 

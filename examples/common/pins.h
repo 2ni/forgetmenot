@@ -53,10 +53,12 @@ typedef struct {
 
 extern pin_t pin_touch, pin_moisture;
 
-void set_direction(pin_t pin, uint8_t input=0);
-void set_pullup(pin_t pin, uint8_t clear=0);
+void set_direction(pin_t *pin, uint8_t input=0);
+void set_pullup(pin_t *pin, uint8_t clear=0);
 
-uint8_t adc_is_running(pin_t pin);
-uint16_t get_adc(pin_t pin, int8_t muxpos=-1);
+uint8_t adc_is_running(pin_t *pin);
+uint16_t get_adc(pin_t *pin, int8_t muxpos=-1);
+
+uint32_t get_deviceid();
 
 #endif

@@ -32,38 +32,53 @@
 /*
  * this function was integrated into TOUCH but is kept here for testing purposes
  */
-uint16_t touch() {
-  pin_touch.port_adc->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+/*
+uint16_t touch(pin_t *p) {
+  (*p).port_adc->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
 
   uint16_t result;
-  set_direction(pin_touch, 0);           // set output and low to discharge touch
-  get_adc(pin_touch, ADC_MUXPOS_GND_gc); // discharge s/h cap by setting muxpos to gnd and run a measurement
+  set_direction(p, 0);           // set output and low to discharge touch
+  get_adc(p, ADC_MUXPOS_GND_gc); // discharge s/h cap by setting muxpos to gnd and run a measurement
 
-  set_direction(pin_touch, 1);           // set input with pullup to charge touch
-  set_pullup(pin_touch, 0);
+  set_direction(p, 1);           // set input with pullup to charge touch
+  set_pullup(p, 0);
   _delay_us(10);
-  set_pullup(pin_touch, 1);              // disable pullup
+  set_pullup(p, 1);              // disable pullup
 
   // enable adc, equalize s/h cap charge with touch charge by setting muxpos and running measurement
-  result = get_adc(pin_touch);
+  result = get_adc(p);
 
   return result;
 }
+
+uint8_t cleared = 1;
+uint8_t was_pressed(uint16_t upper, uint16_t lower) {
+  uint16_t v = touch(&pin_touch);
+  if (v > upper && cleared) {
+    cleared = 0;
+    return 1;
+  }
+
+  if (v < lower) cleared = 1;
+  return 0;
+}
+*/
 
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
 
   DINIT();
-  DL("Hello.");
+
+  DF("Hello from 0x%06lX", get_deviceid());
 
   led_setup();
   led_flash('g', 3);
 
   // use this class or the commented function below
-  TOUCH button(pin_touch);
+  TOUCH button(&pin_touch);
 
   while(1) {
-    if (button.was_pressed()) {
+    if (button.is_pressed()) {
       led_on('g');
       _delay_ms(1000);
       led_off('g');
@@ -71,11 +86,9 @@ int main(void) {
   }
 
   /*
-  touch_init();
-
   uint16_t avg = 0;
   for(uint8_t i=0; i<10; i++) {
-    if (i>4) avg += touch();
+    if (i>4) avg += touch(&pin_touch);
   }
   avg /= 5;
   DF("avg: %u", avg);
@@ -84,7 +97,6 @@ int main(void) {
   uint16_t threshold_lower = avg + 15;
   uint16_t v;
   uint8_t touch_clr = 1;
-
   while(1) {
     v = touch();
     if (v>threshold_upper && touch_clr) {
