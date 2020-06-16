@@ -42,7 +42,7 @@ uint16_t TOUCH::get_avg() {
  */
 uint16_t TOUCH::get_touch() {
   /*
-  (*pin).port_adc->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+  ADC1->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
 
   uint16_t result;
   PORTC.DIRSET = PIN5_bm; // set output and low to discharge touch

@@ -13,8 +13,8 @@ int main(void) {
   DL("Hello.");
 
   led_setup();
-  led_flash('g', 3);
-  led_on('g');
+  led_flash(&led_g, 3);
+  led_on(&led_g);
 
   // debug output examples
   uint16_t time = 14530;        // 0x38C2
@@ -27,8 +27,8 @@ int main(void) {
   DT_S("variable char", var);   // variable char: test
 
   while (1) {
-    led_toggle('b');
-    led_toggle('g');
+    led_toggle(&led_b);
+    led_toggle(&led_g);
 
     _delay_ms(500);
   }

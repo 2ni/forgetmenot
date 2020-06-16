@@ -40,8 +40,8 @@ int main(void) {
   DL("Hello.");
 
   led_setup();
-  led_flash('g', 3);
-  led_on('g');
+  led_flash(&led_g, 3);
+  led_on(&led_g);
 
   timer_init();
   sei();
@@ -50,8 +50,8 @@ int main(void) {
     if (timers_done & timer_bm) {                   // check if bit set
       DT_IH("timers", timers_done);                 // should print 0x11 every .5sec
       timers_done &= ~(1<<timer_bp);
-      led_toggle('b');
-      led_toggle('g');
+      led_toggle(&led_g);
+      led_toggle(&led_b);
     }
   }
 }

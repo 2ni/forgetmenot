@@ -11,12 +11,12 @@
 #include "pins.h"
 
 void led_setup();
-void led_on(char color);
+void led_on(pin_t *led);
 void led_on_all();
-int led_is_on(char color);
-void led_off(char color);
+uint8_t led_is_on(pin_t *led);
+void led_off(pin_t *led);
 void led_off_all();
-void led_toggle(char color);
-void led_flash(char color, uint8_t num);
+void led_toggle(pin_t *led);
+void led_flash(pin_t *led, uint8_t num);
 
 #endif

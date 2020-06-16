@@ -1,9 +1,13 @@
 #include "pins.h"
 #include "uart.h"
 
-pin_t pin_touch = { .port = &PORTC, .pin = 5, .port_adc = &ADC1, .pin_adc = 11 }; // PC5
-pin_t pin_moist = { .port = &PORTC, .pin = 1, .port_adc = &ADC1, .pin_adc = 7  }; // PC1
+pin_t pin_touch          = { .port = &PORTC, .pin = 5, .port_adc = &ADC1, .pin_adc = 11 }; // PC5
+pin_t pin_moisture       = { .port = &PORTC, .pin = 1, .port_adc = &ADC1, .pin_adc = 7  }; // PC1
+pin_t pin_temp_board     = { .port = &PORTC, .pin = 0, .port_adc = &ADC1, .pin_adc = 6  }; // PC0
+pin_t pin_temp_moisture  = { .port = &PORTC, .pin = 2, .port_adc = &ADC1, .pin_adc = 8  }; // PC2
 
+pin_t led_g              = { .port = &PORTB, .pin = 6  }; // PB6
+pin_t led_b              = { .port = &PORTB, .pin = 5  }; // PB5
 
 /*
  * set input / output for a pin
@@ -55,6 +59,8 @@ uint16_t get_adc(pin_t *pin, int8_t muxpos) {
   (*pin).port_adc->CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
   (*pin).port_adc->COMMAND |= 1;
   while (adc_is_running(pin));
+
+  (*pin).port_adc->CTRLA = 0;  // disable adc
 
   return (*pin).port_adc->RES;
 }

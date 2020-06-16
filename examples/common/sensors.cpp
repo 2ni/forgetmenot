@@ -33,7 +33,21 @@ const temp_characteristics_struct temp_characteristics[] = {
  * device: 'b' for board  (PC0, ADC1 AIN6, TEMPBOARD=TEMP1)
  *         's' for sensor (PC2, ADC1 AIN8, TEMPSENSOR=TEMP2)
  */
-uint16_t measure_temperature(char device) {
+uint16_t get_temp_board() {
+  return get_temp(&pin_temp_board);
+}
+
+uint16_t get_temp_moist() {
+  return get_temp(&pin_temp_moisture);
+}
+
+uint16_t get_temp(pin_t *pin) {
+  VREF.CTRLC |= VREF_ADC1REFSEL_1V5_gc;
+  (*pin).port_adc->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
+
+  return adc2temp(get_adc(pin));
+
+  /*
   uint8_t MUXPOS = ADC_MUXPOS_AIN6_gc;
   if (device == 's') {
     MUXPOS = ADC_MUXPOS_AIN8_gc;
@@ -50,13 +64,14 @@ uint16_t measure_temperature(char device) {
 
   ADC1.CTRLA = 0;                       // disable adc
   return adc2temp(ADC1.RES);
+  */
 }
 
 /*
  * measure temperature from chip
  * works only with ADC0
  */
-uint16_t measure_internal_temperature() {
+uint16_t get_temp_chip() {
   VREF.CTRLA = VREF_ADC0REFSEL_1V1_gc;
   ADC0.CTRLC = ADC_PRESC_DIV256_gc | ADC_REFSEL_INTREF_gc | ADC_SAMPCAP_bm;
   ADC0.MUXPOS = ADC_MUXPOS_TEMPSENSE_gc;
@@ -120,7 +135,7 @@ int16_t interpolate(uint16_t adc, const temp_characteristics_struct *characteris
  * returns 1/100 volt precision as int
  * eg 316 -> 3.16v
  */
-uint16_t measure_vcc() {
+uint16_t get_vcc() {
   ADC0.MUXPOS = ADC_MUXPOS_INTREF_gc;   // set pin to int ref
 
   ADC0.CTRLC = ADC_PRESC_DIV64_gc       // 10MHz with prescaler 64 -> 156kHz

@@ -22,25 +22,18 @@
 // PORT B
 #define BLK        PIN0_bm
 #define DBG        PIN1_bm
-#define LED_R      PIN1_bm
 #define CS_LCD     PIN2_bm
 #define DC         PIN3_bm
 #define RST        PIN4_bm
-#define LED_B      PIN5_bm
-#define LED_G      PIN6_bm
 #define OUT1       PIN7_bm
 
-#define PORT_LED   PORTB
 #define PORT_DBG   PORTB
 #define PORT_LCD   PORTB
 
 // PORT C
-#define TEMPBOARD  PIN0_bm // temp1
-#define TEMPSENSOR PIN2_bm // temp2
 #define HALL       PIN3_bm
 #define MULTI      PIN4_bm
 
-#define PORT_TEMP  PORTC
 #define PORT_HALL  PORTC
 #define PORT_HALL  PORTC
 
@@ -51,7 +44,7 @@ typedef struct {
   uint8_t pin_adc;
 } pin_t;
 
-extern pin_t pin_touch, pin_moisture;
+extern pin_t pin_touch, pin_moisture, pin_temp_board, pin_temp_moisture, led_g, led_b;
 
 void set_direction(pin_t *pin, uint8_t input=0);
 void set_pullup(pin_t *pin, uint8_t clear=0);

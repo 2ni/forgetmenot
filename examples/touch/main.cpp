@@ -72,17 +72,24 @@ int main(void) {
   DF("Hello from 0x%06lX", get_deviceid());
 
   led_setup();
-  led_flash('g', 3);
+  led_flash(&led_g, 3);
 
   // use this class or the commented function below
   TOUCH button(&pin_touch);
+  TOUCH moist(&pin_moisture);
 
+  uint16_t humidity = 0;
   while(1) {
     if (button.is_pressed()) {
-      led_on('g');
+      led_on(&led_g);
       _delay_ms(1000);
-      led_off('g');
+      led_off(&led_g);
     }
+
+    humidity = moist.get_touch();
+    DT_I("humidity", humidity);
+    _delay_ms(500);
+
   }
 
   /*
@@ -101,9 +108,9 @@ int main(void) {
     v = touch();
     if (v>threshold_upper && touch_clr) {
       touch_clr = 0;
-      led_on('g');
+      led_on(&led_g);
       _delay_ms(1000);
-      led_off('g');
+      led_off(&led_g);
     }
 
     if (v<threshold_lower) touch_clr = 1;
