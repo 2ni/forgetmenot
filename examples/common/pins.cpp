@@ -6,8 +6,11 @@ pin_t pin_moisture       = { .port = &PORTC, .pin = 1, .port_adc = &ADC1, .pin_a
 pin_t pin_temp_board     = { .port = &PORTC, .pin = 0, .port_adc = &ADC1, .pin_adc = 6  }; // PC0
 pin_t pin_temp_moisture  = { .port = &PORTC, .pin = 2, .port_adc = &ADC1, .pin_adc = 8  }; // PC2
 
-pin_t led_g              = { .port = &PORTB, .pin = 6  }; // PB6
-pin_t led_b              = { .port = &PORTB, .pin = 5  }; // PB5
+pin_t led_g              = { .port = &PORTB, .pin = 6 }; // PB6
+pin_t led_b              = { .port = &PORTB, .pin = 5 }; // PB5
+
+pin_t rfm_cs             = { .port = &PORTA, .pin = 4 }; // PA4
+pin_t rfm_interrupt      = { .port = &PORTA, .pin = 5 }; // PA5
 
 /*
  * set input / output for a pin
@@ -16,8 +19,16 @@ pin_t led_b              = { .port = &PORTB, .pin = 5  }; // PB5
  * default: output
  */
 void set_direction(pin_t *pin, uint8_t input) {
-  if (input) (*pin).port->DIRCLR = (1<<(*pin).pin);
-  else (*pin).port->DIRSET = (1<<(*pin).pin);
+  if (input) (*pin).port->DIRSET = (1<<(*pin).pin);
+  else (*pin).port->DIRCLR = (1<<(*pin).pin);
+}
+
+/*
+ * set pin value if set as output
+ */
+void set_output(pin_t *pin, uint8_t value) {
+  if (value) (*pin).port->OUTSET = (1<<(*pin).pin);
+  else (*pin).port->OUTCLR = (1<<(*pin).pin);
 }
 
 /*

@@ -13,7 +13,7 @@ int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
 
   DINIT();
-  DL("Hello.");
+  DF("Hello from 0x%06lX", get_deviceid());
 
   led_setup();
   led_flash(&led_g, 3);

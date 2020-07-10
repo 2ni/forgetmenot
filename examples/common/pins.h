@@ -8,13 +8,13 @@
 #include <avr/io.h>
 
 // PORT A
-#define MOSI       PIN1_bm
-#define MISO       PIN2_bm
-#define SCK        PIN3_bm
-#define CS_RFM     PIN4_bm
-#define DIO0       PIN5_bm
-#define DIO1       PIN6_bm
-#define OUT2       PIN7_bm
+#define MOSI       PIN1_bm // PA1
+#define MISO       PIN2_bm // PA2
+#define SCK        PIN3_bm // PA3
+#define CS_RFM     PIN4_bm // PA4
+#define DIO0       PIN5_bm // PA5
+#define DIO1       PIN6_bm // PA6
+#define OUT2       PIN7_bm // PA7
 
 #define PORT_SPI   PORTA
 #define PORT_RFM   PORTA
@@ -45,8 +45,10 @@ typedef struct {
 } pin_t;
 
 extern pin_t pin_touch, pin_moisture, pin_temp_board, pin_temp_moisture, led_g, led_b;
+extern pin_t rfm_cs, rfm_interrupt;
 
-void set_direction(pin_t *pin, uint8_t input=0);
+void set_direction(pin_t *pin, uint8_t input=1);
+void set_output(pin_t *pin, uint8_t value);
 void set_pullup(pin_t *pin, uint8_t clear=0);
 
 uint8_t adc_is_running(pin_t *pin);

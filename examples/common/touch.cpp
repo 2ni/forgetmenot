@@ -72,10 +72,10 @@ uint16_t TOUCH::get_touch() {
   (*pin).port_adc->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
 
   uint16_t result;
-  set_direction(pin, 0);           // set output and low to discharge touch
+  set_direction(pin, 1);           // set output and low to discharge touch
   result = get_adc(pin, ADC_MUXPOS_GND_gc); // discharge s/h cap by setting muxpos to gnd and run a measurement
 
-  set_direction(pin, 1);           // set input with pullup to charge touch
+  set_direction(pin, 0);           // set input with pullup to charge touch
   set_pullup(pin, 0);
   _delay_us(10);
   set_pullup(pin, 1);              // disable pullup
