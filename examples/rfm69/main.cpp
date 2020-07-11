@@ -8,6 +8,11 @@
 #include "spi.h"
 #include "rfm69_registers.h"
 
+#define NODE 2
+#define TONODE 5
+#define NETWORK 33
+
+
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
 
@@ -37,18 +42,33 @@ int main(void) {
   DF("SYNCVALUE1: 0x%02x", read_reg(REG_SYNCVALUE1));
   */
 
-  uint8_t version = rfm69_init(868, 1, 1);
+  uint8_t version = rfm69_init(868, NODE, NETWORK);
   if (!version) {
     DL("rfm69 init failed");
   } else {
     DF("RFM69 Version: 0x%02x", version);
   }
 
+  // set_power_level(30);
+
+  uint8_t counter = 0;
+  char msg[8];
+
+
   while (1) {
+    // node
+    sprintf(msg, "Hello:%u", (counter++)%10);
+    DF("%u->%u (%u): '%s'", NODE, TONODE, NETWORK, msg);
+    send(TONODE, msg, strlen(msg), 0); // nodeid, buffer, size, ack
+    _delay_ms(2000);
+
+
+    // gateway
     /*
     if (receive_done()) {
       _delay_ms(10);
       if (ack_requested()) {
+        DL("send ack");
         char ack[0];
         send_ack(ack, 0);
       }

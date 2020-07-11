@@ -23,7 +23,7 @@ void spi_init() {
 
   SPI0.CTRLB |= SPI_SSD_bm | SPI_MODE_0_gc; // ignore SS pin setting for master, set spi mode 0
 
-  SPI0.CTRLA |= (0<<SPI_DORD_bp) | SPI_ENABLE_bm | SPI_MASTER_bm | SPI_PRESC_DIV4_gc; // MSB first, master mode, enable spi, no double clk, prescaler
+  SPI0.CTRLA |= (0<<SPI_DORD_bp) | SPI_ENABLE_bm | SPI_MASTER_bm; // | SPI_PRESC_DIV4_gc; // MSB first, master mode, enable spi, no double clk, prescaler
   SPI0.DATA; // empty rx
 }
 
