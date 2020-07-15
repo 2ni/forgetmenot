@@ -49,8 +49,8 @@ CFLAGS     = -Wall -Wl,-gc-sections -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -I $(LIB)
 #
 # !!!!!!!!!!! always 1st connect programmer cable !!!!!!!!!! 
 #
-PORT_PRG   = $(shell ls -U /dev/cu.wchusbserial*|tail -1)
-PORT_DBG   = $(shell if [ `ls -U /dev/cu.wchusbserial*|wc -l` -gt 1 ]; then ls -U /dev/cu.wchusbserial*|head -1; fi)
+PORT_PRG   = $(shell ls -t /dev/cu.wchusbserial*|tail -1)
+PORT_DBG   = $(shell if [ `ls -t /dev/cu.wchusbserial*|wc -l` -gt 1 ]; then ls -t /dev/cu.wchusbserial*|tail -2|head -1; fi)
 PYUPDI     = pyupdi.py -d $(DEVICE_PY) -c $(PORT_PRG)
 OBJCOPY    = $(BIN)avr-objcopy
 OBJDUMP    = $(BIN)avr-objdump
