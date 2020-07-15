@@ -41,6 +41,8 @@ void     promiscuous(uint8_t on_off);
 void     set_network(uint8_t id);
 void     send_ack(const void *buffer, uint8_t size);
 uint8_t  ack_requested();
+uint8_t  ack_received(uint8_t node_id);
 void     get_data(char *data, uint8_t len);
+void     set_address(uint8_t addr);
 
 #endif

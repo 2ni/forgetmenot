@@ -4,6 +4,7 @@
 #include "rfm69_registers.h"
 #include "spi.h"
 #include "pins.h"
+#include "uart.h"
 
 volatile uint8_t DATALEN;
 volatile uint8_t SENDERID;
@@ -101,9 +102,14 @@ uint8_t rfm69_init(uint16_t freq, uint8_t node_id, uint8_t network_id) {
   // TODO replace PIN5CTRL with pin
   rfm_interrupt.port->PIN5CTRL |= PORT_ISC_RISING_gc;
 
+  address = node_id;
   set_network(network_id);
 
   return version;
+}
+
+void set_address(uint8_t addr) {
+  write_reg(REG_NODEADRS, addr);
 }
 
 ISR(PORTA_PORT_vect) {
@@ -125,10 +131,10 @@ ISR(PORTA_PORT_vect) {
 
     DATALEN = PAYLOADLEN - 3;
     SENDERID = spi_transfer_byte(0);
-    uint8_t CTLbyte = spi_transfer_byte(0);
+    uint8_t ctl_byte = spi_transfer_byte(0);
 
-    ACK_RECEIVED = CTLbyte & RFM69_CTL_SENDACK; // extract ACK-received flag
-    ACK_REQUESTED = CTLbyte & RFM69_CTL_REQACK; // extract ACK-requested flag
+    ACK_RECEIVED = ctl_byte & RFM69_CTL_SENDACK; // extract ACK-received flag
+    ACK_REQUESTED = ctl_byte & RFM69_CTL_REQACK; // extract ACK-requested flag
 
     for (uint8_t i = 0; i < DATALEN; i++) {
         DATA[i] = spi_transfer_byte(0);
@@ -252,8 +258,9 @@ void set_high_power() {
 }
 
 void set_power_level(uint8_t level) {
-  if (is_rfm69hw == 1) level /= 2;
-  write_reg(REG_PALEVEL, (read_reg(REG_PALEVEL) & 0xE0) | level);
+  power_level = (level > 31 ? 31 : level);
+  if (is_rfm69hw == 1) power_level /= 2;
+  write_reg(REG_PALEVEL, (read_reg(REG_PALEVEL) & 0xE0) | power_level);
 
 }
 
@@ -335,42 +342,37 @@ void send(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack) {
 }
 
 void send_frame(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack, uint8_t send_ack) {
+  // DF("%u: '%s' (%u)", to, (char*)buffer, size);
   set_mode(RF69_MODE_STANDBY); // turn off receiver to prevent reception while filling fifo
   while ((read_reg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
-  //write_reg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00); // DIO0 is "Packet Sent"
-  if (size > RF69_MAX_DATA_LEN)
-    size = RF69_MAX_DATA_LEN;
+  if (size > RF69_MAX_DATA_LEN) size = RF69_MAX_DATA_LEN;
 
   // control byte
   uint8_t ctl_byte = 0x00;
-  if (send_ack == 1)
+  if (send_ack)
     ctl_byte = RFM69_CTL_SENDACK;
-  else if (request_ack == 1)
+  else if (request_ack)
     ctl_byte = RFM69_CTL_REQACK;
 
   if (to > 0xFF) ctl_byte |= (to & 0x300) >> 6; //assign last 2 bits of address if > 255
   if (address > 0xFF) ctl_byte |= (address & 0x300) >> 8;   //assign last 2 bits of address if > 255
 
   // write to FIFO
-  select(); //enable data transfer
+  select();
   spi_transfer_byte(REG_FIFO | 0x80);
   spi_transfer_byte(size + 3);
-  spi_transfer_byte(to);
-  spi_transfer_byte(address);
+  spi_transfer_byte((uint8_t)to);
+  spi_transfer_byte((uint8_t)address);
   spi_transfer_byte(ctl_byte);
 
   for (uint8_t i = 0; i < size; i++)
     spi_transfer_byte(((uint8_t*) buffer)[i]);
-
   unselect();
 
   // no need to wait for transmit mode to be ready since its handled by the radio
   set_mode(RF69_MODE_TX);
-  //millis_current = millis();
-  //_delay_ms(500);
-  // wait for DIO to high
-  // for PINE5
-  //while (bit_is_clear(INT_PIN, INT_pin_num) && millis() - millis_current < RF69_TX_LIMIT_MS);
+  //uint32_t txStart = millis();
+  //while (digitalRead(_interruptPin) == 0 && millis() - txStart < RF69_TX_LIMIT_MS); // wait for DIO0 to turn HIGH signalling transmission finish
   while ((read_reg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT) == 0x00); // wait for PacketSent
   set_mode(RF69_MODE_STANDBY);
 }
