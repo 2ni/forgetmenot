@@ -49,8 +49,9 @@ CFLAGS     = -Wall -Wl,-gc-sections -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -I $(LIB)
 #
 # !!!!!!!!!!! always 1st connect programmer cable !!!!!!!!!! 
 #
-PORT_PRG   = $(shell ls -t /dev/cu.wchusbserial*|tail -1)
+PORT_PRG   = $(shell if [ ! -z $(port) ]; then ls /dev/cu.wchusbserial* |grep $(port)0; else ls -t /dev/cu.wchusbserial*|tail -1; fi)
 PORT_DBG   = $(shell if [ `ls -t /dev/cu.wchusbserial*|wc -l` -gt 1 ]; then ls -t /dev/cu.wchusbserial*|tail -2|head -1; fi)
+# enforce port with <cmd> port=<1|2|3|4>
 PYUPDI     = pyupdi.py -d $(DEVICE_PY) -c $(PORT_PRG)
 OBJCOPY    = $(BIN)avr-objcopy
 OBJDUMP    = $(BIN)avr-objdump
@@ -96,8 +97,9 @@ $(PRJ).hex: $(PRJ).elf Makefile
 -include $(DEPENDS)
 
 # start debugging terminal
+# make serial port=1 to enforce port /dev/cu.wchusbserial1410
 serial:
-	@if [ -z $(PORT_DBG) ]; then echo "no DBG port found"; else ./serialterminal.py -p $(PORT_DBG) -d; fi
+	@if [ -z $(PORT_DBG) ]; then echo "no DBG port found"; else ./serialterminal.py -p $(shell if [ ! -z $(port) ]; then ls /dev/cu.wchusbserial* |grep $(port)0; else ls $(PORT_DBG); fi) -d; fi
 
 # show available uart ports for flashing and debugging terminal
 ports:
@@ -109,7 +111,7 @@ ports:
 
 # check programmer connectivity
 test:
-	$(PYUPDI) -iv
+	@$(PYUPDI) -iv
 
 # read out fuses
 readfuse:
