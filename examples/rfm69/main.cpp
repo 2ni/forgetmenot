@@ -8,11 +8,13 @@
 #include "rfm69.h"
 #include "spi.h"
 #include "rfm69_registers.h"
+#include "timer.h"
 
 #define NODE 2
 #define TONODE 5
 #define NETWORK 33
 
+/*
 volatile uint8_t timeout = 0;
 ISR(TCA0_OVF_vect) {
   timeout = 1;
@@ -20,21 +22,46 @@ ISR(TCA0_OVF_vect) {
 }
 
 void timer_init() {
-  TCA0.SINGLE.PER = 19532;                           // 10MHz/1024/19532 = 0.5Hz
   TCA0.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm;
 }
 
-void timer_start() {
+void timer_start(uint16_t ms) {
+  timeout = 0;
+  uint32_t ticks = ((10e6*ms)/1024)/1000;
+  TCA0.SINGLE.PER = ticks;                           // 10MHz/1024/19532 = 0.5Hz
   TCA0.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV1024_gc |   // prescaler 1024
   TCA_SINGLE_ENABLE_bm;
 }
 
-/*
- * only clearing enable bit doesn't seem to work
- */
 void timer_stop() {
-  TCA0.SINGLE.CTRLA = 0;
+  TCA0.SINGLE.CTRLA = 0; // only clearing enable bit doesn't seem to work
 }
+*/
+
+/*
+volatile uint8_t timeoutb = 0;
+void timerb_init() {
+  TCB0.CCMP = 9776; // 10MHz/1024/4883 = 1Hz
+  TCB0.INTCTRL = TCB_CAPT_bm;
+}
+
+void timerb_start() {
+  timeoutb = 0;
+  TCB0.CTRLA = TCB_ENABLE_bm | TCB_CLKSEL_CLKTCA_gc;  // use clk from tca 10MHz/1024
+}
+
+void timerb_stop() {
+  TCB0.CTRLA = 0;
+}
+
+ISR(TCB0_INT_vect) {
+  timeoutb = 1;
+  TCB0.INTFLAGS = TCB_CAPT_bm;
+}
+*/
+
+TIMER timer(10e6);
+
 
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
@@ -75,27 +102,28 @@ int main(void) {
   // set_power_level(30);
 
   uint8_t counter = 0;
-  char msg[8];
+  char msg[9];
   uint8_t ack_request = 1;
 
-  timer_init();
-  timer_start();
-  sei();
-
+  timer.start(2000);
   while (1) {
     // node
-    if (timeout) {
-      timer_stop();
+    if (timer.timed_out()) {
+      timer.stop();
       sprintf(msg, "Hello:%u", (counter++)%10);
       DF("%u->%u (%u): '%s'", NODE, TONODE, NETWORK, msg);
       send(TONODE, msg, strlen(msg), ack_request); // nodeid, buffer, size, ack
       if (ack_request) {
-        while (!ack_received(TONODE)){}
-        D(" ...got ack");
+        timer.start(1000);
+        while (!timer.timed_out() && !ack_received(TONODE)) {}
+        if (timer.timed_out()) {
+          D(" ...timeout");
+        } else {
+          D(" ...got ack");
+        }
       }
       DLF();
-      timeout = 0;
-      timer_start();
+      timer.start(2000);
     }
 
     /*
