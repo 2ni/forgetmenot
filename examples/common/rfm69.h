@@ -2,9 +2,10 @@
  * https://github.com/nayem-cosmic/RFM69-Library-AVR
  */
 #include <avr/io.h>
+#include "timer.h"
 
-#ifndef RFM69_h
-#define RFM69_h
+#ifndef __RFM69_h__
+#define __RFM69_h__
 
 #define RF69_MODE_SLEEP         0   // XTAL OFF
 #define RF69_MODE_STANDBY       1   // XTAL ON
@@ -36,13 +37,14 @@ uint8_t  can_send();
 uint8_t  receive_done();
 void     receive_begin();
 void     send(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack);
+uint8_t  send_retry(uint8_t to, const void* buffer, uint8_t size, uint8_t retries, TIMER* ptimer);
 void     send_frame(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack, uint8_t send_ack);
 void     promiscuous(uint8_t on_off);
 void     set_network(uint8_t id);
 void     send_ack(const void *buffer, uint8_t size);
 uint8_t  ack_requested();
 uint8_t  ack_received(uint8_t node_id);
-void     get_data(char *data, uint8_t len);
+int16_t  get_data(char *data, uint8_t len);
 void     set_address(uint8_t addr);
 
 #endif

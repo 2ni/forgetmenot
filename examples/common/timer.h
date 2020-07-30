@@ -9,6 +9,7 @@
 class TIMER {
   public:
     TIMER(uint32_t mhz);
+    TIMER();
     void start(uint16_t ms);
     void stop();
     uint8_t timed_out();
@@ -16,6 +17,7 @@ class TIMER {
     volatile uint8_t _timeout = 0;
 
   private:
+    void init();
     uint32_t _mhz;
 };
 

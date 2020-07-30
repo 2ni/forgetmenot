@@ -5,6 +5,7 @@
 #include "spi.h"
 #include "pins.h"
 #include "uart.h"
+#include "timer.h"
 
 volatile uint8_t DATALEN;
 volatile uint8_t SENDERID;
@@ -151,12 +152,14 @@ ISR(PORTA_PORT_vect) {
 
 /*
  * get data from buffer if receive_done()
+ * and return RSSI
  */
-void get_data(char *data, uint8_t size) {
+int16_t get_data(char *data, uint8_t size) {
   if (size > RF69_MAX_DATA_LEN) size = RF69_MAX_DATA_LEN;
   for (uint8_t i=0; i<size; i++) {
     data[i] = DATA[i];
   }
+  return RSSI;
 }
 
 /*
@@ -339,6 +342,26 @@ void send(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack) {
   write_reg(REG_PACKETCONFIG2, (read_reg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   while (!can_send()) receive_done();
   send_frame(to, buffer, size, request_ack, 0);
+}
+
+/*
+ * timeout is handled by a timer
+ * pass a pointer to a timer class
+ * eg
+ * include "timer.h"
+ * TIMER timer;
+ * send_retry(..., &timer);
+ *
+ */
+uint8_t send_retry(uint8_t to, const void* buffer, uint8_t size, uint8_t retries, TIMER* ptimer) {
+  for (uint8_t i=0; i<=retries; i++) {
+    send(to, buffer, size, 1);
+    ptimer->start(500); // timeout 500ms
+    while (!ptimer->timed_out()) {
+      if (ack_received(to)) return 1;
+    }
+  }
+  return 0;
 }
 
 void send_frame(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack, uint8_t send_ack) {

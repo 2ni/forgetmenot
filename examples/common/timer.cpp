@@ -11,6 +11,15 @@ ISR(TCA0_OVF_vect) {
 
 TIMER::TIMER(uint32_t mhz) {
   _mhz = mhz;
+  init();
+}
+
+TIMER::TIMER() {
+  _mhz = F_CPU;
+  init();
+}
+
+void TIMER::init() {
   TCA0.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm;
   timer_pointer = this;
 }

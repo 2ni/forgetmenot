@@ -27,7 +27,7 @@
   #define DLF()              uart_send_string_p(PSTR("\n"))
   #define D(str)             uart_send_string_p(PSTR(str))
   #define DL(str)            { uart_send_string_p(PSTR(str)); DLF(); }
-  #define DF(format, ...)    { char uart_buf[50]; sprintf(uart_buf, format, __VA_ARGS__); uart_send_string(uart_buf); }
+  #define DF(format, ...)    { char uart_buf[120]; sprintf(uart_buf, format, __VA_ARGS__); uart_send_string(uart_buf); }
   #define DT_C(key, value)   uart_tuple(PSTR(key), PSTR(value))
   #define DT_S(key, value)   uart_tuple(PSTR(key), value)
   #define DT_I(key, value)   uart_tuple(PSTR(key), value)

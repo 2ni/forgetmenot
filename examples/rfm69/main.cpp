@@ -36,9 +36,7 @@ void timer_start(uint16_t ms) {
 void timer_stop() {
   TCA0.SINGLE.CTRLA = 0; // only clearing enable bit doesn't seem to work
 }
-*/
 
-/*
 volatile uint8_t timeoutb = 0;
 void timerb_init() {
   TCB0.CCMP = 9776; // 10MHz/1024/4883 = 1Hz
@@ -60,7 +58,7 @@ ISR(TCB0_INT_vect) {
 }
 */
 
-TIMER timer(10e6);
+TIMER timer;
 
 
 int main(void) {
@@ -103,15 +101,42 @@ int main(void) {
 
   uint8_t counter = 0;
   char msg[9];
-  uint8_t ack_request = 1;
+  // uint8_t ack_request = 1;
+  char incoming[RF69_MAX_DATA_LEN+1];
+  int16_t rssi;
+  uint16_t sleep_time = 2000;
+
+  char cmd;
+  unsigned int value;
 
   timer.start(2000);
   while (1) {
     // node
     if (timer.timed_out()) {
       timer.stop();
-      sprintf(msg, "Hello:%u", (counter++)%10);
-      DF("%u->%u (%u): '%s'", NODE, TONODE, NETWORK, msg);
+      uint8_t len = sprintf(msg, "Hello:%u", (counter++)%10);
+
+      DF("send_retry: %u->%u (%u): '%s'", NODE, TONODE, NETWORK, msg);
+      if (send_retry(TONODE, msg, len, 3, &timer)) {
+        rssi = get_data(incoming, RF69_MAX_DATA_LEN);
+        sscanf(incoming, " %c:%u", &cmd, &value);
+        if (cmd=='s') {
+          sleep_time = value * 1000; // convert in ms
+          // DF("((%c, %u))", cmd, value);
+        }
+        /*
+        char * token;
+        token = strtok(incoming, "|");
+        while (token) {
+        }
+        */
+        DF(" ...ok with response: '%s' [RSSI: %i] [sleep: %u]\n", incoming, rssi, sleep_time);
+      } else {
+        DL(" ...failed");
+      }
+
+      /*
+      DF("send: %u->%u (%u): '%s'", NODE, TONODE, NETWORK, msg);
       send(TONODE, msg, strlen(msg), ack_request); // nodeid, buffer, size, ack
       if (ack_request) {
         timer.start(1000);
@@ -119,11 +144,15 @@ int main(void) {
         if (timer.timed_out()) {
           D(" ...timeout");
         } else {
-          D(" ...got ack");
+          get_data(data, RF69_MAX_DATA_LEN);
+          DF(" ...got ack with response: '%s'", data);
         }
       }
       DLF();
-      timer.start(2000);
+      */
+
+      sleep();
+      timer.start(sleep_time);
     }
 
     /*
