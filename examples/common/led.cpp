@@ -1,6 +1,5 @@
 /*
- * getting started with attiny series 0/1
- * http://ww1.microchip.com/downloads/en/Appnotes/90003229A.pdf
+ * led manipulation functions
  */
 
 #ifndef __LED_H_
@@ -10,23 +9,10 @@
 
 #include "led.h"
 
-void led_setup() {
-  led_g.port->DIRSET = (1<<led_g.pin);  // output
-  led_g.port->OUTCLR = (1<<led_g.pin);  // set low
-
-  led_b.port->DIRSET = (1<<led_b.pin);  // output
-  led_b.port->OUTCLR = (1<<led_b.pin);  // set low
-
-  /*
-   * DBG used for now
-   *
-  PORT_LED.DIRSET = LED_R;  // output
-  PORT_LED.OUTCLR = LED_R;  // set low
-  */
-}
-
 void led_on(pin_t *led) {
-  (*led).port->OUTSET = (1<<(*led).pin);
+  set_direction(led); // set output
+  set_output(led, 1);
+  // (*led).port->OUTSET = (1<<(*led).pin);
 }
 
 void led_on_all() {
@@ -39,7 +25,9 @@ uint8_t led_is_on(pin_t *led) {
 }
 
 void led_off(pin_t *led) {
-  (*led).port->OUTCLR = (1<<(*led).pin);
+  set_direction(led);
+  set_output(led, 0);
+  // (*led).port->OUTCLR = (1<<(*led).pin);
 }
 
 void led_off_all() {
@@ -48,7 +36,9 @@ void led_off_all() {
 }
 
 void led_toggle(pin_t *led) {
-  (*led).port->OUTTGL = (1<<(*led).pin);
+  set_direction(led);
+  toggle_output(led);
+  // (*led).port->OUTTGL = (1<<(*led).pin);
 }
 
 void led_flash(pin_t *led, uint8_t num) {

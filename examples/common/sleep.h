@@ -9,12 +9,18 @@
  *
  * RTC needs standby mode
  *
+ * !!!!!! CAUTION !!!!!!
+ * be sure to call clear_all_pins to get real low power and activate only the pins you need
+ *
+ * power consumption:
+ *   80uA : power directly 3.3v (w/o LDO module)
+ *   115uA: power via LDO module
+ *
  */
 #ifndef __SLEEP_H__
 #define __SLEEP_H__
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/sleep.h>
 
 void sleep_ms(uint32_t ms);
 

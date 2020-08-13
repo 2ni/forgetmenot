@@ -71,7 +71,6 @@ int main(void) {
 
   DF("Hello from 0x%06lX", get_deviceid());
 
-  led_setup();
   led_flash(&led_g, 3);
 
   // use this class or the commented function below

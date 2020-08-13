@@ -67,7 +67,6 @@ int main(void) {
   DINIT();
   DF("Hello from 0x%06lX\n", get_deviceid());
 
-  led_setup();
   led_flash(&led_g, 3);
 
 

@@ -45,10 +45,13 @@ typedef struct {
 } pin_t;
 
 extern pin_t pin_touch, pin_moisture, pin_temp_board, pin_temp_moisture, led_g, led_b;
+extern pin_t out1, out2;
 extern pin_t rfm_cs, rfm_interrupt;
 
+void clear_all_pins();
 void set_direction(pin_t *pin, uint8_t input=1);
 void set_output(pin_t *pin, uint8_t value);
+void toggle_output(pin_t *pin);
 void set_pullup(pin_t *pin, uint8_t clear=0);
 
 uint8_t adc_is_running(pin_t *pin);

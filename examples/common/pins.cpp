@@ -6,12 +6,36 @@ pin_t pin_moisture       = { .port = &PORTC, .pin = 1, .port_adc = &ADC1, .pin_a
 pin_t pin_temp_board     = { .port = &PORTC, .pin = 0, .port_adc = &ADC1, .pin_adc = 6  }; // PC0
 pin_t pin_temp_moisture  = { .port = &PORTC, .pin = 2, .port_adc = &ADC1, .pin_adc = 8  }; // PC2
 
+pin_t out1               = { .port = &PORTB, .pin = 7 }; // PB7
+pin_t out2               = { .port = &PORTA, .pin = 7 }; // PA7
+
 pin_t led_g              = { .port = &PORTB, .pin = 6 }; // PB6
 pin_t led_b              = { .port = &PORTB, .pin = 5 }; // PB5
 
 pin_t rfm_cs             = { .port = &PORTA, .pin = 4 }; // PA4
 pin_t rfm_interrupt      = { .port = &PORTA, .pin = 5 }; // PA5
 
+/*
+ * set all pins as input and low
+ *
+ * this is somehow needed to get low power while sleeping
+ */
+void clear_all_pins() {
+  for (uint8_t i = 0; i < 8; i++) {
+    PORTA.DIRSET = (1<<i);
+    PORTA.OUTCLR = (1<<i);
+  }
+
+  for (uint8_t i = 0; i < 8; i++) {
+    PORTB.DIRSET = (1<<i);
+    PORTB.OUTCLR = (1<<i);
+  }
+
+  for (uint8_t i = 0; i < 6; i++) {
+    PORTC.DIRSET = (1<<i);
+    PORTC.OUTCLR = (1<<i);
+  }
+}
 /*
  * set input / output for a pin
  * ie set_direction(touch); // defines touch as output
@@ -29,6 +53,13 @@ void set_direction(pin_t *pin, uint8_t input) {
 void set_output(pin_t *pin, uint8_t value) {
   if (value) (*pin).port->OUTSET = (1<<(*pin).pin);
   else (*pin).port->OUTCLR = (1<<(*pin).pin);
+}
+
+/*
+ * toggle pin output
+ */
+void toggle_output(pin_t *pin) {
+  (*pin).port->OUTTGL = (1<<(*pin).pin);
 }
 
 /*

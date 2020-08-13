@@ -1,3 +1,4 @@
+#include <avr/interrupt.h>
 #include "pins.h"
 #include "uart.h"
 #include "led.h"
@@ -11,10 +12,30 @@
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
 
-  DINIT();
+  /*
+  while (RTC.STATUS > 0) {}
+
+  RTC.INTCTRL = 0 << RTC_CMP_bp         // compare match
+    | 1 << RTC_OVF_bp;                  // overflow interrupt
+  RTC.PER = 5000;
+
+  RTC.CTRLA = RTC_PRESCALER_DIV1_gc	//NO Prescaler
+    | RTC_RTCEN_bm       	//Enable RTC
+    | RTC_RUNSTDBY_bm;   	//Run in standby
+
+  RTC.CLKSEL = RTC_CLKSEL_INT1K_gc;
+
+  sei();
+
+  SLPCTRL.CTRLA |= (SLPCTRL_SMODE_STDBY_gc | SLPCTRL_SEN_bm);
+  asm("sleep");
+  while(1) {}
+  */
+
+  DINIT(); // for unknown reasons UART_HIGH consumes ~0.6mA if CH330 connected (even if not powered)
   DF("Hello from 0x%06lX\n", get_deviceid());
 
-  led_setup();
+  clear_all_pins(); // this is important to get real low power. Only keep the ones you really need, eg led_b
   led_flash(&led_b, 3);
 
   while (1) {
@@ -22,6 +43,6 @@ int main(void) {
     sleep_ms(500);
     led_off(&led_b);
 
-    sleep_ms(3000);
+    sleep_ms(5000);
   }
 }
