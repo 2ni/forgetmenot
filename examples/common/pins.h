@@ -48,6 +48,7 @@ extern pin_t pin_touch, pin_moisture, pin_temp_board, pin_temp_moisture, led_g, 
 extern pin_t out1, out2;
 extern pin_t rfm_cs, rfm_interrupt;
 
+void disable_buffer_of_pins();
 void clear_all_pins();
 void set_direction(pin_t *pin, uint8_t input=1);
 void set_output(pin_t *pin, uint8_t value);

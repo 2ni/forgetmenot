@@ -15,6 +15,19 @@ pin_t led_b              = { .port = &PORTB, .pin = 5 }; // PB5
 pin_t rfm_cs             = { .port = &PORTA, .pin = 4 }; // PA4
 pin_t rfm_interrupt      = { .port = &PORTA, .pin = 5 }; // PA5
 
+
+/*
+ * disable digital input buffer on all io pins
+ * to save power
+ */
+void disable_buffer_of_pins() {
+  for (uint8_t pin = 0; pin < 8; pin++) {
+    (&PORTA.PIN0CTRL)[pin] = PORT_ISC_INPUT_DISABLE_gc;
+    (&PORTB.PIN0CTRL)[pin] = PORT_ISC_INPUT_DISABLE_gc;
+    (&PORTC.PIN0CTRL)[pin] = PORT_ISC_INPUT_DISABLE_gc;
+  }
+}
+
 /*
  * set all pins as input and low
  *
@@ -39,6 +52,8 @@ void clear_all_pins() {
 /*
  * set input / output for a pin
  * ie set_direction(touch); // defines touch as output
+ * input = 1 -> output
+ * input = 0 -> input
  *
  * default: output
  */
