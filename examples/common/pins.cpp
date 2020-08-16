@@ -15,7 +15,6 @@ pin_t led_b              = { .port = &PORTB, .pin = 5 }; // PB5
 pin_t rfm_cs             = { .port = &PORTA, .pin = 4 }; // PA4
 pin_t rfm_interrupt      = { .port = &PORTA, .pin = 5 }; // PA5
 
-
 /*
  * disable digital input buffer on all io pins
  * to save power
