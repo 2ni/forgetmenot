@@ -3,6 +3,7 @@
 #include "uart.h"
 #include "led.h"
 #include "sleep.h"
+#include "motor.h"
 
 /*
  * simple standby example
@@ -11,6 +12,7 @@
  */
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
+  // _PROTECTED_WRITE(CLKCTRL.MCLKCTRLA, CLKCTRL_CLKSEL_OSCULP32K_gc); // select internal 32.768kHz as main clock to save power
 
   /*
   while (RTC.STATUS > 0) {}
@@ -32,6 +34,8 @@ int main(void) {
   while(1) {}
   */
 
+  disable_buffer_of_pins();
+
   DINIT(); // for unknown reasons UART_HIGH consumes ~0.6mA if CH330 connected (even if not powered)
   DF("Hello from 0x%06lX\n", get_deviceid());
 
@@ -43,6 +47,6 @@ int main(void) {
     sleep_ms(500);
     led_off(&led_b);
 
-    sleep_ms(5000);
+    sleep_ms(10000);
   }
 }
