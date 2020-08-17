@@ -50,7 +50,7 @@ extern pin_t rfm_cs, rfm_interrupt;
 
 void disable_buffer_of_pins();
 void clear_all_pins();
-void set_direction(pin_t *pin, uint8_t input=1);
+void set_direction(pin_t *pin, uint8_t direction=1);
 void set_output(pin_t *pin, uint8_t value);
 void toggle_output(pin_t *pin);
 void set_pullup(pin_t *pin, uint8_t clear=0);

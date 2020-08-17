@@ -81,9 +81,9 @@ int main(void) {
   // () sth about pulldown on dio0 pin
   /*
   spi_init();
-  set_output(&rfm_cs, 1);
   uint8_t reg = read_reg(REG_VERSION); // addr: 0x10 should be 0x24
   DF("Version: 0x%02x\n", reg);
+  while (1) {}
 
   write_reg(REG_SYNCVALUE1, 0xaa);
   DF("SYNCVALUE1: 0x%02x\n", read_reg(REG_SYNCVALUE1));

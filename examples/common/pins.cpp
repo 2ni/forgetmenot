@@ -51,13 +51,13 @@ void clear_all_pins() {
 /*
  * set input / output for a pin
  * ie set_direction(touch); // defines touch as output
- * input = 1 -> output
- * input = 0 -> input
+ * direction = 1 -> output
+ * direction = 0 -> input
  *
  * default: output
  */
-void set_direction(pin_t *pin, uint8_t input) {
-  if (input) (*pin).port->DIRSET = (1<<(*pin).pin);
+void set_direction(pin_t *pin, uint8_t direction) {
+  if (direction) (*pin).port->DIRSET = (1<<(*pin).pin);
   else (*pin).port->DIRCLR = (1<<(*pin).pin);
 }
 
