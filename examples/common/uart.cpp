@@ -119,9 +119,37 @@ void uart_send_digit(uint16_t value, uint8_t base) {
 void uart_int2float(char *buf, uint16_t value, uint8_t precision) {
   itoa(value, buf, 10);
   uint8_t len = strlen(buf);
-  for (uint8_t i=len; i>len-precision; i--) {
-    buf[i] = buf[i-1];
+  uint8_t wrote_dot = 0;
+
+  // ensure char array is at least precision+1 length -> fill it with 0
+  int8_t p_read = len - 1;
+  uint8_t p_write;
+  if (precision >= len) {
+    p_write = precision + 1;
+  } else {
+    p_write = len;
   }
-  buf[len-precision] = '.';
-  buf[len+1] = '\0';
+  /*
+  DT_I("len", len);
+  DT_I("precision", precision);
+  DT_I("p_read", p_read);
+  DT_I("p_write", p_write);
+  */
+
+  for (int8_t i=p_write; i>=0; i--) {
+    // DF("i:%i p_read:%i\n", i, p_read);
+    if (!wrote_dot && precision == 0) {
+      wrote_dot = 1;
+      buf[i] = '.';
+    }
+    else if (p_read < 0) {
+      buf[i] = '0';
+    } else {
+      buf[i] = buf[p_read];
+      p_read--;
+    }
+
+    precision--;
+  }
+  buf[p_write+1] = '\0';
 }
