@@ -8,6 +8,7 @@
 #include <avr/io.h>
 
 #include "led.h"
+#include "sleep.h"
 
 void led_on(pin_t *led) {
   set_direction(led); // set output
@@ -44,9 +45,9 @@ void led_toggle(pin_t *led) {
 void led_flash(pin_t *led, uint8_t num) {
   for (uint8_t c=0; c<num; c++) {
     led_on(led);
-    _delay_ms(100);
+    sleep_ms(100);
     led_off(led);
-    if (c!= num-1) _delay_ms(100); // no delay if last cycle
+    if (c!= num-1) sleep_ms(100); // no delay if last cycle
   }
 }
 
