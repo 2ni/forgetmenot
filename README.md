@@ -14,7 +14,7 @@ It's more or a less a boilerplate at the moment. I'm working on the hardware.
 
 ### installation
 ```
-pyenv virtualenv 3.7.4 forgetmenot
+pyenv virtualenv 3.7.8 forgetmenot
 pyenv local forgetmenot
 pip install -r requirements
 ```
