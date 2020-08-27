@@ -167,7 +167,7 @@ uint32_t get_vcc_battery() {
 uint16_t get_vcc_cpu() {
   ADC0.MUXPOS = ADC_MUXPOS_INTREF_gc;   // set pin to int ref
 
-  ADC0.CTRLC = ADC_PRESC_DIV128_gc       // 10MHz with prescaler 64 -> 156kHz
+  ADC0.CTRLC = ADC_PRESC_DIV128_gc       // 10MHz with prescaler 128 -> 78kHz
     | ADC_REFSEL_VDDREF_gc              // VDD
     | (0<<ADC_SAMPCAP_bp);              // disable sample capacitance
 
