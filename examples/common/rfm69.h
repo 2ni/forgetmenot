@@ -30,7 +30,7 @@ void     set_mode(uint8_t new_mode);
 void     set_high_power_regs(uint8_t on_off);
 void     set_high_power();
 void     set_power_level(uint8_t level);
-void     sleep();
+void     rfm69_sleep();
 uint8_t  read_temperature();
 int16_t  read_rssi(uint8_t force_trigger);
 uint8_t  can_send();

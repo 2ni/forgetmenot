@@ -267,7 +267,7 @@ void set_power_level(uint8_t level) {
 
 }
 
-void sleep() {
+void rfm69_sleep() {
   set_mode(RF69_MODE_SLEEP);
 }
 
