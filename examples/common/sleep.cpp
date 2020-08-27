@@ -5,6 +5,10 @@ ISR(RTC_CNT_vect) {
   RTC.INTFLAGS = RTC_OVF_bm;
 }
 
+/*
+ * RTC.PER: 16bit max
+ * -> max 65 seconds
+ */
 void sleep_ms(uint32_t ms) {
   while (RTC.STATUS > 0) {}             // wait for all register to be synchronized
 
