@@ -27,6 +27,7 @@ const temp_characteristics_struct temp_characteristics[] = {
   {450,  85}
 };
 
+
 /*
  * measure temperature with sensors on the board or humidity sensor
  *
@@ -43,9 +44,18 @@ uint16_t get_temp_moist() {
 
 uint16_t get_temp(pin_t *pin) {
   VREF.CTRLC |= VREF_ADC1REFSEL_1V5_gc;
-  (*pin).port_adc->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
+  (*pin).port_adc->CTRLC = ADC_PRESC_DIV128_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
 
-  return adc2temp(get_adc(pin));
+  // get average
+  uint32_t value = 0;
+  uint8_t samples = 1;
+  for (uint8_t i=0; i<samples; i++) {
+    uint16_t v = get_adc(pin);
+    // DF("  v: %u\n", v);
+    value += v;
+  }
+
+  return adc2temp(value/samples);
 
   /*
   uint8_t MUXPOS = ADC_MUXPOS_AIN6_gc;
@@ -129,16 +139,35 @@ int16_t interpolate(uint16_t adc, const temp_characteristics_struct *characteris
 
   return temp_start+r;
 }
+/*
+ * get current voltage of power, aka battery
+ * used resistor divider 1M - 220k, 1.5v internale reference
+ * returns precision 1/100 volt, eg 495 -> 4.95v
+ * max vbat: 8.3v (1.5v ref)
+ *           6.1v (1.1v ref)
+ *
+ * for some strange reasons I get wrong values if presclaer is lower than 128
+ */
+uint32_t get_vcc_battery() {
+  multi.port_adc->CTRLC = ADC_PRESC_DIV128_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
+  VREF.CTRLC |= VREF_ADC1REFSEL_1V1_gc;
+
+  uint16_t adc = get_adc(&multi);
+  // (vref * (r1+r2) * precision * adc) / (r2 * adc_precision)
+  // (1.5*1220*100*adc) / (220*1024)
+  return (134200*adc)/225280; // 1.1v reference
+  // return (183000*adc)/225280; // 1.5v reference
+}
 
 /*
  * measures vcc of chip
  * returns 1/100 volt precision as int
  * eg 316 -> 3.16v
  */
-uint16_t get_vcc() {
+uint16_t get_vcc_cpu() {
   ADC0.MUXPOS = ADC_MUXPOS_INTREF_gc;   // set pin to int ref
 
-  ADC0.CTRLC = ADC_PRESC_DIV64_gc       // 10MHz with prescaler 64 -> 156kHz
+  ADC0.CTRLC = ADC_PRESC_DIV128_gc       // 10MHz with prescaler 64 -> 156kHz
     | ADC_REFSEL_VDDREF_gc              // VDD
     | (0<<ADC_SAMPCAP_bp);              // disable sample capacitance
 
