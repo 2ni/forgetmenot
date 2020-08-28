@@ -1,22 +1,37 @@
 ### purpose
-Software to run on the forgetmenot board based on ATtiny3217 (alternative ATtiny1617).
+This is the software used for my forgetmenot board based on ATtiny3217 (alternative ATtiny1617, ATtiny817).
+See [hardware](hardware).
 It measures temperature, humidity of soil and outputs result on led's, on a ST7789 screen or
 sends the data via RFM95 or RMF69 to a server.
 This is a complete new version of a [sensor based on the ATtiny88](https://github.com/2ni/attiny88).
-
-It's more or a less a boilerplate at the moment. I'm working on the hardware.
-
-### open points
-- [X] create hardware board
-- [ ] write according software
-- [ ] pyupdi always needs reinitialisation, which probably makes the write process slow
-- [ ] check alternative to pyupdi: [avr updi](https://metacpan.org/release/Device-AVR-UPDI) needs newer perl version though
 
 ### installation
 ```
 pyenv virtualenv 3.7.8 forgetmenot
 pyenv local forgetmenot
 pip install -r requirements
+./activate.py node
+make build port=3
+```
+
+### examples
+There are many examples in the ./examples folder. To upload one of it:
+```
+./activate.py examples/blink
+make build port=3
+```
+
+### serial output
+You can connect the usb of your computer to the usb and run
+```
+make serial port=1
+```
+
+### available ports
+Depending on where you connect the device on your computer it has a different port number.
+You can find out the number by running the following command:
+```
+make ports
 ```
 
 ### useful links
@@ -27,11 +42,9 @@ pip install -r requirements
 - https://github.com/SpenceKonde/megaTinyCore
 
 ### todos
-- measure vcc w/o gpio: http://ww1.microchip.com/downloads/en/Appnotes/00002447A.pdf
 - use cs on st7789 w/o CS: https://github.com/Bodmer/TFT_eSPI/issues/163#issuecomment-515616375
 - decoupling caps: https://electronics.stackexchange.com/questions/90971/does-my-circuit-need-decoupling-caps
 - use PTC (capacitive touch control) see http://ww1.microchip.com/downloads/en/appnotes/atmel-42360-ptc-robustness-design-guide_applicationnote_at09363.pdf
-
 
 ### toolchains for avr-gcc / avrxmega3
 I tried many things including patching etc. At the end 2 options worked. You can configure them in the Makefile. I have markr42 active by default.

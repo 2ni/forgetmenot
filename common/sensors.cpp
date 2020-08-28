@@ -162,6 +162,7 @@ uint32_t get_vcc_battery() {
 
 /*
  * measures vcc of chip
+ * based on http://ww1.microchip.com/downloads/en/Appnotes/00002447A.pdf
  * returns 1/100 volt precision as int
  * eg 316 -> 3.16v
  */
