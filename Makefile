@@ -26,6 +26,7 @@ EFU        = 0xFF
 
 SRC        = ./src
 EXT        =
+COMMON     = ./common
 
 FLAGS      = -DDEBUG
 CPPFLAGS   =
@@ -41,7 +42,7 @@ BIN        = ./toolchain_markr42/avr/bin/
 
 # -Wl,-gc-sections is used to not include unused code in binary
 #  https://stackoverflow.com/questions/14737641/have-linker-remove-unused-object-files-for-avr-gcc
-CFLAGS     = -Wall -Wl,-gc-sections -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -I $(LIB) $(FLAGS)
+CFLAGS     = -Wall -Wl,-gc-sections -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -I $(LIB) -I $(COMMON) $(FLAGS)
 
 # ********************************************************
 
@@ -59,9 +60,11 @@ SIZE       = $(BIN)avr-objdump -Pmem-usage
 CC         = $(BIN)avr-gcc
 
 # objects
-CFILES     = $(wildcard $(SRC)/*.c)
+# CFILES     = $(wildcard $(SRC)/*.c)
+CFILES    := $(foreach dir, $(COMMON) $(SRC), $(wildcard $(dir)/*.c))
 EXTC      := $(foreach dir, $(EXT), $(wildcard $(dir)/*.c))
-CPPFILES   = $(wildcard $(SRC)/*.cpp)
+# CPPFILES   = $(wildcard $(SRC)/*.cpp)
+CPPFILES  := $(foreach dir, $(COMMON) $(SRC), $(wildcard $(dir)/*.cpp))
 EXTCPP    := $(foreach dir, $(EXT), $(wildcard $(dir)/*.cpp))
 OBJ        = $(CFILES:.c=.c.o) $(EXTC:.c=.c.o) $(CPPFILES:.cpp=.cpp.o) $(EXTCPP:.cpp=.cpp.o)
 DEPENDS   := $(CFILES:.c=.d) $(EXTC:.c=.d) $(CPPFILES:.cpp=.cpp.d) $(EXTCPP:.cpp=.cpp.d)

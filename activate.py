@@ -25,10 +25,10 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 os.system('find src/ -type l -delete')
 
 # always link common functions
-if os.path.isdir('examples/common'):
-    for f in os.listdir('examples/common/'):
-        if not f.endswith('.swp'):
-            os.system('ln -s ../examples/common/{f} src/'.format(f=f))
+# if os.path.isdir('examples/common'):
+#    for f in os.listdir('examples/common/'):
+#        if not f.endswith('.swp'):
+#            os.system('ln -s ../examples/common/{f} src/'.format(f=f))
 
 # if dir given, link every file from the dir
 files = []
