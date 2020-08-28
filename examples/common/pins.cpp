@@ -15,6 +15,8 @@ pin_t led_b              = { .port = &PORTB, .pin = 5 }; // PB5
 pin_t rfm_cs             = { .port = &PORTA, .pin = 4 }; // PA4
 pin_t rfm_interrupt      = { .port = &PORTA, .pin = 5 }; // PA5
 
+pin_t multi              = { .port = &PORTC, .pin = 4, .port_adc = &ADC1, .pin_adc = 10 }; // PC4
+
 /*
  * disable digital input buffer on all io pins
  * to save power
@@ -51,7 +53,7 @@ void clear_all_pins() {
 /*
  * set input / output for a pin
  * ie set_direction(touch); // defines touch as output
- * direction = 1 -> output
+ * direction = 1 -> output (default)
  * direction = 0 -> input
  *
  * default: output
@@ -106,6 +108,8 @@ uint8_t adc_is_running(pin_t *pin) {
  * returns measured value
  */
 uint16_t get_adc(pin_t *pin, int8_t muxpos) {
+  // set_direction(pin, 0); // set as input
+
   // if muxpos not defined, use muxpos of pin
   if (muxpos == -1) {
     (*pin).port_adc->MUXPOS = ((ADC_MUXPOS_AIN0_gc + (*pin).pin_adc) << 0);
@@ -117,6 +121,10 @@ uint16_t get_adc(pin_t *pin, int8_t muxpos) {
   while (adc_is_running(pin));
 
   (*pin).port_adc->CTRLA = 0;  // disable adc
+
+  // save power
+  // set_direction(pin, 1);
+  // set_output(pin, 0);
 
   return (*pin).port_adc->RES;
 }

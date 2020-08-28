@@ -43,7 +43,7 @@ uint16_t get_temp_moist() {
 }
 
 uint16_t get_temp(pin_t *pin) {
-  VREF.CTRLC |= VREF_ADC1REFSEL_1V5_gc;
+  VREF.CTRLC = VREF_ADC1REFSEL_1V5_gc;
   (*pin).port_adc->CTRLC = ADC_PRESC_DIV128_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
 
   // get average
@@ -67,7 +67,7 @@ uint16_t get_temp(pin_t *pin) {
   ADC1.CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
   ADC1.CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
 
-  VREF.CTRLC |= VREF_ADC1REFSEL_1V5_gc;
+  VREF.CTRLC = VREF_ADC1REFSEL_1V5_gc;
 
   ADC1.COMMAND |= 1;
   while (!(ADC1.INTFLAGS & ADC_RESRDY_bm));
@@ -81,7 +81,7 @@ uint16_t get_temp(pin_t *pin) {
  * measure temperature from chip
  * works only with ADC0
  */
-uint16_t get_temp_chip() {
+uint16_t get_temp_cpu() {
   VREF.CTRLA = VREF_ADC0REFSEL_1V1_gc;
   ADC0.CTRLC = ADC_PRESC_DIV256_gc | ADC_REFSEL_INTREF_gc | ADC_SAMPCAP_bm;
   ADC0.MUXPOS = ADC_MUXPOS_TEMPSENSE_gc;
@@ -150,7 +150,7 @@ int16_t interpolate(uint16_t adc, const temp_characteristics_struct *characteris
  */
 uint32_t get_vcc_battery() {
   multi.port_adc->CTRLC = ADC_PRESC_DIV128_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
-  VREF.CTRLC |= VREF_ADC1REFSEL_1V1_gc;
+  VREF.CTRLC = VREF_ADC1REFSEL_1V1_gc;
 
   uint16_t adc = get_adc(&multi);
   // (vref * (r1+r2) * precision * adc) / (r2 * adc_precision)
@@ -175,7 +175,7 @@ uint16_t get_vcc_cpu() {
     | (0<<ADC_FREERUN_bp)               // no free run
     | ADC_RESSEL_10BIT_gc;              // set resolution to 10bit
 
-  VREF.CTRLA |= VREF_ADC0REFSEL_1V1_gc; // 1.1v reference
+  VREF.CTRLA = VREF_ADC0REFSEL_1V1_gc; // 1.1v reference
 
   ADC0.COMMAND |= 1;
   while (!(ADC0.INTFLAGS & ADC_RESRDY_bm));

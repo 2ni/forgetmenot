@@ -47,6 +47,7 @@ typedef struct {
 extern pin_t pin_touch, pin_moisture, pin_temp_board, pin_temp_moisture, led_g, led_b;
 extern pin_t out1, out2;
 extern pin_t rfm_cs, rfm_interrupt;
+extern pin_t multi;
 
 void disable_buffer_of_pins();
 void clear_all_pins();
