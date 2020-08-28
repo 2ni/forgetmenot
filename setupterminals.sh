@@ -45,14 +45,14 @@ tell application "iTerm2"
 
   tell first session of current tab of current window
     set name to "attiny3217"
-    set background color to {65535, 65535, 32768}
+    set background color to {255*65535/255, 255*65535/255, 200*65535/255}
     split vertically with default profile
     write text "make serial port=1"
   end tell
 
   tell second session of current tab of current window
     set name to "esp32"
-    set background color to {65535, 32768, 65535}
+    set background color to {200*65535/255, 255*65535/255, 200*65535/255}
     write text "cd /www/esp32-devboard; make terminalt port=4"
   end tell
 
