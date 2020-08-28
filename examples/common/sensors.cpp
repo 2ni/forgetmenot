@@ -42,6 +42,7 @@ uint16_t get_temp_moist() {
   return get_temp(&pin_temp_moisture);
 }
 
+// TODO depending on pin it could be ADC0 and therefore VREF.CTRLA
 uint16_t get_temp(pin_t *pin) {
   VREF.CTRLC = VREF_ADC1REFSEL_1V5_gc;
   (*pin).port_adc->CTRLC = ADC_PRESC_DIV128_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
