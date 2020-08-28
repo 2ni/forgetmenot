@@ -42,7 +42,8 @@ BIN        = ./toolchain_markr42/avr/bin/
 
 # -Wl,-gc-sections is used to not include unused code in binary
 #  https://stackoverflow.com/questions/14737641/have-linker-remove-unused-object-files-for-avr-gcc
-CFLAGS     = -Wall -Wl,-gc-sections -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -I $(LIB) -I $(COMMON) $(FLAGS)
+#  https://www.mikrocontroller.net/articles/GCC:_unbenutzte_Funktionen_entfernen
+CFLAGS     = -Wall -Wl,-gc-sections -ffunction-sections -fdata-sections -Os -DF_CPU=$(CLK) -mmcu=$(DEVICE) -I $(LIB) -I $(COMMON) $(FLAGS)
 
 # ********************************************************
 
