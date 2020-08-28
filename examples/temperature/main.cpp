@@ -39,10 +39,10 @@ int main(void) {
 
     // get voltages
     vcc_cpu_raw = get_vcc_cpu();
-    uart_int2float(vcc_cpu, vcc_cpu_raw, 2);
+    uart_u2c(vcc_cpu, vcc_cpu_raw, 2);
 
     vcc_bat_raw = get_vcc_battery();
-    uart_int2float(vcc_bat, vcc_bat_raw, 2);
+    uart_u2c(vcc_bat, vcc_bat_raw, 2);
 
     DF("vcc cpu: %sv (%u), battery: %sv (%u)\n", vcc_cpu, vcc_cpu_raw, vcc_bat, vcc_bat_raw);
 
@@ -50,10 +50,10 @@ int main(void) {
     temp_cpu = get_temp_cpu();
 
     temp_board_raw = get_temp_board();
-    uart_int2float(temp_board, temp_board_raw, 1);
+    uart_u2c(temp_board, temp_board_raw, 1);
 
     temp_moist_raw = get_temp_moist();
-    uart_int2float(temp_moist, temp_moist_raw, 1);
+    uart_u2c(temp_moist, temp_moist_raw, 1);
 
     DF("temp cpu: %u, board: %s (%u), moisture: %s (%u)\n", temp_cpu, temp_board, temp_board_raw, temp_moist, temp_moist_raw);
 

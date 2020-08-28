@@ -113,10 +113,10 @@ void uart_send_digit(uint16_t value, uint8_t base) {
 }
 
 /*
- * convert an int to a char array
+ * convert an uint to a char array
  * eg 345 -> "3.45"
  */
-void uart_int2float(char *buf, uint16_t value, uint8_t precision) {
+void uart_u2c(char *buf, uint16_t value, uint8_t precision) {
   itoa(value, buf, 10);
   uint8_t len = strlen(buf);
   uint8_t wrote_dot = 0;
