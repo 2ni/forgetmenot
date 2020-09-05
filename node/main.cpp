@@ -29,6 +29,14 @@ uint8_t data_len;
 
 uint8_t humidity, voltage;
 
+void cmd_to_buffer(uint8_t *buffer, uint8_t pos, const char *cmd, uint16_t value) {
+  uint8_t i = pos*4;
+  buffer[i] = cmd[0];
+  buffer[i+1] = cmd[1];
+  buffer[i+2] = (value >> 8) & 0xff; // high byte
+  buffer[i+3] = value & 0xff;
+}
+
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
 
@@ -41,11 +49,12 @@ int main(void) {
   set_direction(&pin_temp_moisture, 0);
 
   DINIT();
-  DF("Hello from 0x%06lX\n", get_deviceid());
+  uint32_t deviceid = get_deviceid();
+  DF("Hello from 0x%06lX\n", deviceid);
 
   led_flash(&led_b, 3);
 
-  uint8_t version = rfm69_init(868, NODE, NETWORK);
+  uint8_t version = rfm69_init(868, deviceid, NETWORK);
   if (!version) {
     DL("rfm69 init failed");
   } else {
@@ -53,25 +62,46 @@ int main(void) {
   }
 
   while(1) {
-    char vcc[5], tb[5], tm[5];
-    uart_u2c(vcc, get_vcc_battery(), 2);
-    uart_u2c(tb, get_temp_board(), 1);
-    uart_u2c(tm, get_temp_moist(), 1);
+    char char_vcc[5], char_tb[5], char_tm[5];
+    uint16_t vcc, tb, tm;
+    vcc = get_vcc_battery();
+    tb = get_temp_board();
+    tm = get_temp_moist();
+    uart_u2c(char_vcc, vcc, 2);
+    uart_u2c(char_tb, tb, 1);
+    uart_u2c(char_tm, tm, 1);
 
     uint16_t hum = moist.get_touch();
     uint16_t sleep_time = 5;
 
-    data_len = sprintf(data, "tb:%s|tm:%s|h:%u|vcc:%s", tb, tm, hum, vcc);
-    // DF("%s\n", data);
-    DF("%s response: ", data);
-    led_flash(&led_b, 1);
+    data_len = sprintf(data, "tb:%s (%u)|tm:%s (%u)|h:%u|vcc:%s (%u)", char_tb, tb, char_tm, tm, hum, char_vcc, vcc);
+    DF("%s", data);
 
+    led_flash(&led_b, 1);
     set_power_level(1);
+
+    // we send junks of 4 bytes: 2 bytes cmd name, 2 bytes uint16_t value
+    uint8_t num_of_cmds = 4;
+    uint8_t buffer[4*num_of_cmds];
+    cmd_to_buffer(buffer, 0, "tb", tb);
+    cmd_to_buffer(buffer, 1, "tm", tm);
+    cmd_to_buffer(buffer, 2, "hu", hum);
+    cmd_to_buffer(buffer, 3, "vc", vcc);
+
+    if (send_retry(GATEWAY, buffer, 4*num_of_cmds, 1, &timer)) {
+      uint16_t rssi = get_data(feedback, RF69_MAX_DATA_LEN);
+      DF(" feedback: '%s' [RSSI: %i]", feedback, rssi);
+    } else {
+      D(" feedback failed");
+    }
+
+    DL("");
+
+
+    /*
     // send(GATEWAY, data, data_len, 0);
     if (send_retry(GATEWAY, data, data_len, 1, &timer)) {
       // send successful, get data from ack
-      // feedback format: <cmd>:<value>|<cmd>:<value>|...
-      // TODO extract commands from feedback
       uint16_t rssi = get_data(feedback, RF69_MAX_DATA_LEN);
 
       char cmd;
@@ -82,8 +112,9 @@ int main(void) {
     } else {
       DL("failed");
     }
+    */
 
     rfm69_sleep();
-    sleep_ms(1000);
+    sleep_ms(2000);
   }
 }

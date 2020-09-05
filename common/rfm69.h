@@ -16,11 +16,11 @@
 #define COURSE_TEMP_COEF        -90
 #define CSMA_LIMIT              -90 // upper RX signal sensitivity threshold in dBm for carrier sense access
 #define RF69_BROADCAST_ADDR     0
-#define RF69_MAX_DATA_LEN       61
+#define RF69_MAX_DATA_LEN       58 // 65 - 7 overhead (uint8_t len, uint16_t dest, uint16_t source, uint8_t ctl)
 #define RFM69_CTL_SENDACK       0x80
 #define RFM69_CTL_REQACK        0x40
 
-uint8_t  rfm69_init(uint16_t freq, uint8_t node_id, uint8_t network_id);
+uint8_t  rfm69_init(uint16_t freq, uint16_t node_id, uint8_t network_id);
 void     select();
 void     unselect();
 uint8_t  read_reg(uint8_t addr);
@@ -36,15 +36,15 @@ int16_t  read_rssi(uint8_t force_trigger);
 uint8_t  can_send();
 uint8_t  receive_done();
 void     receive_begin();
-void     send(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack);
-uint8_t  send_retry(uint8_t to, const void* buffer, uint8_t size, uint8_t retries, TIMER* ptimer);
-void     send_frame(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack, uint8_t send_ack);
+void     send(uint16_t to, const void* buffer, uint8_t size, uint8_t request_ack);
+uint8_t  send_retry(uint16_t to, const void* buffer, uint8_t size, uint8_t retries, TIMER* ptimer);
+void     send_frame(uint16_t to, const void* buffer, uint8_t size, uint8_t request_ack, uint8_t send_ack);
 void     promiscuous(uint8_t on_off);
 void     set_network(uint8_t id);
 void     send_ack(const void *buffer, uint8_t size);
 uint8_t  ack_requested();
 uint8_t  ack_received(uint8_t node_id);
 int16_t  get_data(char *data, uint8_t len);
-void     set_address(uint8_t addr);
+uint16_t get_id();
 
 #endif

@@ -147,9 +147,9 @@ int16_t interpolate(uint16_t adc, const temp_characteristics_struct *characteris
  * max vbat: 8.3v (1.5v ref)
  *           6.1v (1.1v ref)
  *
- * for some strange reasons I get wrong values if presclaer is lower than 128
+ * for some strange reasons I get wrong values if prescaler is lower than 128
  */
-uint32_t get_vcc_battery() {
+uint16_t get_vcc_battery() {
   multi.port_adc->CTRLC = ADC_PRESC_DIV128_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
   VREF.CTRLC = VREF_ADC1REFSEL_1V1_gc;
 

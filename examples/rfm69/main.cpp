@@ -65,7 +65,8 @@ int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
 
   DINIT();
-  DF("Hello from 0x%06lX\n", get_deviceid());
+  uint32_t node = get_deviceid();
+  DF("Hello from 0x%06lX\n", node);
 
   led_flash(&led_g, 3);
 
@@ -86,7 +87,7 @@ int main(void) {
   while (1) {}
   */
 
-  uint8_t version = rfm69_init(868, NODE, NETWORK);
+  uint8_t version = rfm69_init(868, node, NETWORK);
   if (!version) {
     DL("rfm69 init failed");
   } else {

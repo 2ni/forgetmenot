@@ -134,5 +134,5 @@ uint16_t get_adc(pin_t *pin, int8_t muxpos) {
  *  can be printed with DF("Hello from 0x%06lX", get_deviceid());
  */
 uint32_t get_deviceid() {
-  return ((uint32_t)SIGROW.DEVICEID0<<16) + ((uint16_t)SIGROW.DEVICEID1<<8) + (uint8_t)SIGROW.DEVICEID2;
+  return ((uint32_t)SIGROW.DEVICEID0<<16) | ((uint16_t)SIGROW.DEVICEID1<<8) | (uint8_t)SIGROW.DEVICEID2;
 }

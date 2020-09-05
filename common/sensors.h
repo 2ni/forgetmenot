@@ -18,7 +18,7 @@ int16_t  adc2temp(uint16_t adc);
 int16_t  interpolate(uint16_t adc, const temp_characteristics_struct *characteristics, uint8_t size);
 
 uint16_t get_vcc_cpu();
-uint32_t get_vcc_battery();
+uint16_t get_vcc_battery();
 
 extern const uint8_t temp_characteristics_size;
 extern const temp_characteristics_struct temp_characteristics[];

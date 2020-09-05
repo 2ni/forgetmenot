@@ -8,8 +8,8 @@
 #include "timer.h"
 
 volatile uint8_t DATALEN;
-volatile uint8_t SENDERID;
-volatile uint8_t TARGETID;
+volatile uint16_t SENDERID;
+volatile uint16_t TARGETID;
 volatile uint8_t PAYLOADLEN;
 volatile uint8_t ACK_RECEIVED;
 volatile uint8_t ACK_REQUESTED;
@@ -20,10 +20,10 @@ volatile uint8_t mode = RF69_MODE_STANDBY;
 volatile uint8_t inISR = 0;
 uint8_t is_rfm69hw = 1; // high power mode available
 uint8_t power_level = 31;
-uint8_t address; // device id
+uint16_t address; // device id
 uint8_t promiscuous_mode = 0;
 
-uint8_t rfm69_init(uint16_t freq, uint8_t node_id, uint8_t network_id) {
+uint8_t rfm69_init(uint16_t freq, uint16_t node_id, uint8_t network_id) {
   const uint8_t CONFIG[][2] = {
     /* 0x01 */ { REG_OPMODE, RF_OPMODE_SEQUENCER_ON | RF_OPMODE_LISTEN_OFF | RF_OPMODE_STANDBY },
     /* 0x02 */ { REG_DATAMODUL, RF_DATAMODUL_DATAMODE_PACKET | RF_DATAMODUL_MODULATIONTYPE_FSK | RF_DATAMODUL_MODULATIONSHAPING_00 }, // no shaping
@@ -109,10 +109,25 @@ uint8_t rfm69_init(uint16_t freq, uint8_t node_id, uint8_t network_id) {
   return version;
 }
 
-void set_address(uint8_t addr) {
-  write_reg(REG_NODEADRS, addr);
+/*
+ * get lower byte first
+ * then higher byte
+ * and convert it to uint16_t
+ */
+uint16_t get_id() {
+  return (uint16_t)(spi_transfer_byte(0)<<8 | (spi_transfer_byte(0)));
 }
 
+/*
+ * get data interrupt service routine
+ *
+ * id's of devices is max 16bit
+ * LSB first
+ *
+ * see packet structure of payload https://lowpowerlab.com/2013/06/20/rfm69-library/
+ * header(6): len(1), destination(2), sender(2), ctl(1)
+ *
+ */
 ISR(PORTA_PORT_vect) {
   inISR = 1;
   if (mode == RF69_MODE_RX && (read_reg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY)) {
@@ -121,17 +136,17 @@ ISR(PORTA_PORT_vect) {
     spi_transfer_byte(REG_FIFO & 0x7F);
     PAYLOADLEN = spi_transfer_byte(0);
     if (PAYLOADLEN>66) PAYLOADLEN=66;
-    TARGETID = spi_transfer_byte(0);
+    TARGETID = get_id();
     if (!(promiscuous_mode || TARGETID == address || TARGETID == RF69_BROADCAST_ADDR) // match this node's address, or broadcast address or anything in promiscuous mode
-    || PAYLOADLEN < 3) { // address situation could receive packets that are malformed and don't fit this libraries extra fields
+    || PAYLOADLEN < 5) { // address situation could receive packets that are malformed and don't fit this libraries extra fields
       PAYLOADLEN = 0;
       unselect();
       receive_begin();
       return;
     }
 
-    DATALEN = PAYLOADLEN - 3;
-    SENDERID = spi_transfer_byte(0);
+    SENDERID = get_id();
+    DATALEN = PAYLOADLEN - 5; // uin8t_t len, uint16_t dest, uint16_t sender, uin8t_t ctl
     uint8_t ctl_byte = spi_transfer_byte(0);
 
     ACK_RECEIVED = ctl_byte & RFM69_CTL_SENDACK; // extract ACK-received flag
@@ -338,7 +353,7 @@ void receive_begin() {
   set_mode(RF69_MODE_RX);
 }
 
-void send(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack) {
+void send(uint16_t to, const void* buffer, uint8_t size, uint8_t request_ack) {
   write_reg(REG_PACKETCONFIG2, (read_reg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   while (!can_send()) receive_done();
   send_frame(to, buffer, size, request_ack, 0);
@@ -353,7 +368,7 @@ void send(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack) {
  * send_retry(..., &timer);
  *
  */
-uint8_t send_retry(uint8_t to, const void* buffer, uint8_t size, uint8_t retries, TIMER* ptimer) {
+uint8_t send_retry(uint16_t to, const void* buffer, uint8_t size, uint8_t retries, TIMER* ptimer) {
   for (uint8_t i=0; i<=retries; i++) {
     send(to, buffer, size, 1);
     ptimer->start(500); // timeout 500ms
@@ -364,7 +379,7 @@ uint8_t send_retry(uint8_t to, const void* buffer, uint8_t size, uint8_t retries
   return 0;
 }
 
-void send_frame(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ack, uint8_t send_ack) {
+void send_frame(uint16_t to, const void* buffer, uint8_t size, uint8_t request_ack, uint8_t send_ack) {
   // DF("%u: '%s' (%u)", to, (char*)buffer, size);
   set_mode(RF69_MODE_STANDBY); // turn off receiver to prevent reception while filling fifo
   while ((read_reg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
@@ -377,15 +392,20 @@ void send_frame(uint8_t to, const void* buffer, uint8_t size, uint8_t request_ac
   else if (request_ack)
     ctl_byte = RFM69_CTL_REQACK;
 
+  // XXX is this used???
+  /*
   if (to > 0xFF) ctl_byte |= (to & 0x300) >> 6; //assign last 2 bits of address if > 255
   if (address > 0xFF) ctl_byte |= (address & 0x300) >> 8;   //assign last 2 bits of address if > 255
+  */
 
   // write to FIFO
   select();
   spi_transfer_byte(REG_FIFO | 0x80);
-  spi_transfer_byte(size + 3);
-  spi_transfer_byte((uint8_t)to);
-  spi_transfer_byte((uint8_t)address);
+  spi_transfer_byte(size + 5);
+  spi_transfer_byte((uint8_t)((to >> 8) & 0xff)); // high byte
+  spi_transfer_byte((uint8_t)(to & 0xff)); // low byte
+  spi_transfer_byte((uint8_t)((address >> 8) & 0xff)); // high byte
+  spi_transfer_byte((uint8_t)(address & 0xff)); // low byte
   spi_transfer_byte(ctl_byte);
 
   for (uint8_t i = 0; i < size; i++)
