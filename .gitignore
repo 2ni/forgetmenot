@@ -3,6 +3,7 @@ __pycache__/
 dummy
 *.swp
 *.o
+*.d
 *.done
 *.hex
 *.elf
