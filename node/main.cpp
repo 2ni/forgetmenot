@@ -16,7 +16,6 @@
 #include "sensors.h"
 #include "touch.h"
 
-#define NODE 2
 #define GATEWAY 99
 #define NETWORK 33
 
@@ -48,15 +47,15 @@ int main(void) {
   set_direction(&pin_temp_board, 0);
   set_direction(&pin_temp_moisture, 0);
 
-  DINIT();
   uint32_t deviceid = get_deviceid();
+  DINIT();
   DF("Hello from 0x%06lX\n", deviceid);
 
   led_flash(&led_b, 3);
 
   uint8_t version = rfm69_init(868, deviceid, NETWORK);
   if (!version) {
-    DL("rfm69 init failed");
+    DL("RFM69 init failed\n");
   } else {
     DF("RFM69 Version: 0x%02x\n", version);
   }
@@ -74,7 +73,7 @@ int main(void) {
     uint16_t hum = moist.get_touch();
     uint16_t sleep_time = 5;
 
-    data_len = sprintf(data, "tb:%s (%u)|tm:%s (%u)|h:%u|vcc:%s (%u)", char_tb, tb, char_tm, tm, hum, char_vcc, vcc);
+    data_len = sprintf(data, "tb:%s (%u) tm:%s (%u) h:%u vcc:%s (%u)", char_tb, tb, char_tm, tm, hum, char_vcc, vcc);
     DF("%s", data);
 
     led_flash(&led_b, 1);
@@ -88,7 +87,7 @@ int main(void) {
     cmd_to_buffer(buffer, 2, "hu", hum);
     cmd_to_buffer(buffer, 3, "vc", vcc);
 
-    if (send_retry(GATEWAY, buffer, 4*num_of_cmds, 1, &timer)) {
+    if (send_retry(GATEWAY, buffer, 4*num_of_cmds, 3, &timer)) {
       uint16_t rssi = get_data(feedback, RF69_MAX_DATA_LEN);
       DF(" feedback: '%s' [RSSI: %i]", feedback, rssi);
     } else {
@@ -115,6 +114,6 @@ int main(void) {
     */
 
     rfm69_sleep();
-    sleep_ms(2000);
+    sleep_s(5);
   }
 }

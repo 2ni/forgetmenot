@@ -371,7 +371,7 @@ void send(uint16_t to, const void* buffer, uint8_t size, uint8_t request_ack) {
 uint8_t send_retry(uint16_t to, const void* buffer, uint8_t size, uint8_t retries, TIMER* ptimer) {
   for (uint8_t i=0; i<=retries; i++) {
     send(to, buffer, size, 1);
-    ptimer->start(500); // timeout 500ms
+    ptimer->start(50); // timeout 50ms
     while (!ptimer->timed_out()) {
       if (ack_received(to)) return 1;
     }
@@ -391,12 +391,6 @@ void send_frame(uint16_t to, const void* buffer, uint8_t size, uint8_t request_a
     ctl_byte = RFM69_CTL_SENDACK;
   else if (request_ack)
     ctl_byte = RFM69_CTL_REQACK;
-
-  // XXX is this used???
-  /*
-  if (to > 0xFF) ctl_byte |= (to & 0x300) >> 6; //assign last 2 bits of address if > 255
-  if (address > 0xFF) ctl_byte |= (address & 0x300) >> 8;   //assign last 2 bits of address if > 255
-  */
 
   // write to FIFO
   select();

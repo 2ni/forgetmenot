@@ -22,6 +22,7 @@
 void uart_setup(void) {
   PORT_DBG.DIRSET = DBG;  // output
   UART_HIGH;
+  _delay_ms(1);   // make sure uart is really ready, ie after call of clear_all_pins()
 }
 
 /*
