@@ -22,6 +22,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-void sleep_ms(uint32_t ms);
+void sleep_ms(uint16_t ms);
+void sleep_s(uint16_t s);
 
 #endif

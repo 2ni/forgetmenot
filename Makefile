@@ -129,7 +129,7 @@ writefuse:
 # flash hex to mcu
 flash: all
 	@echo "flashing to $(PORT_PRG). Pls wait..."
-	@$(PYUPDI) -f $(PRJ).hex && afplay /System/Library/Sounds/Ping.aiff -v 30
+	@$(PYUPDI) -f $(PRJ).hex && afplay /System/Library/Sounds/Ping.aiff -v 10
 
 # reset device
 reset:
