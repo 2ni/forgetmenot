@@ -21,10 +21,10 @@
 #define RFM69_CTL_REQACK        0x40
 
 uint8_t  rfm69_init(uint16_t freq, uint16_t node_id, uint8_t network_id);
-void     select();
-void     unselect();
-uint8_t  read_reg(uint8_t addr);
-void     write_reg(uint8_t addr, uint8_t value);
+void     rfm69_select();
+void     rfm69_unselect();
+uint8_t  rfm69_read_reg(uint8_t addr);
+void     rfm69_write_reg(uint8_t addr, uint8_t value);
 void     encrypt(const char* key);
 void     set_mode(uint8_t new_mode);
 void     set_high_power_regs(uint8_t on_off);

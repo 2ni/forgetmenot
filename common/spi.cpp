@@ -5,7 +5,7 @@
 /*
  * ok values: 8MHz, msb first, mode0 (alternative: mode3)
  */
-void spi_init() {
+void spi_init(uint8_t mode) {
 /*
 1. Configure the SS pin in the port peripheral.
 2. Select SPI Master/Slave operation by writing the Master/Slave Select bit (MASTER) in the Control A register (SPIn.CTRLA).
@@ -18,12 +18,12 @@ void spi_init() {
 */
 
   PORTMUX.CTRLB = PORTMUX_SPI0_DEFAULT_gc; // SPI on PA0-4
-  PORTA.DIR |= MOSI | SCK | CS_RFM; // SS probably doesn't need to be set as output to avoid spi going highwire, see SPI_SSD_bm
+  PORTA.DIR |= MOSI | SCK; // SS probably doesn't need to be set as output to avoid spi going highwire, see SPI_SSD_bm
   PORTA.DIR &= ~MISO; // input
 
-  SPI0.CTRLB |= SPI_SSD_bm | SPI_MODE_0_gc; // ignore SS pin setting for master, set spi mode 0
+  SPI0.CTRLB = SPI_SSD_bm | mode; // ignore SS pin setting for master, set spi mode 0
 
-  SPI0.CTRLA |= (0<<SPI_DORD_bp) | SPI_ENABLE_bm | SPI_MASTER_bm; // | SPI_PRESC_DIV4_gc; // MSB first, master mode, enable spi, no double clk, prescaler
+  SPI0.CTRLA = (0<<SPI_DORD_bp) | SPI_ENABLE_bm | SPI_MASTER_bm; // | SPI_PRESC_DIV4_gc; // MSB first, master mode, enable spi, no double clk, prescaler
   SPI0.DATA; // empty rx
 }
 

@@ -70,34 +70,34 @@ uint8_t rfm69_init(uint16_t freq, uint16_t node_id, uint8_t network_id) {
     {255, 0}
   };
   spi_init();
-  // already set in spi_init set_direction(&rfm_cs, 1); // set as output
+  set_direction(&rfm_cs, 1); // set as output
   set_output(&rfm_cs, 1);    // set high
   // set pull down. isr on rising
 
   // simple check
-  uint8_t version = read_reg(REG_VERSION);
+  uint8_t version = rfm69_read_reg(REG_VERSION);
   if (version != 0x24) {
     return 0; // failure
   }
 
   set_direction(&rfm_interrupt, 0); // set interrupt pin as input (might need pull down)
 
-  while (read_reg(REG_SYNCVALUE1) != 0xaa) {
-    write_reg(REG_SYNCVALUE1, 0xaa);
+  while (rfm69_read_reg(REG_SYNCVALUE1) != 0xaa) {
+    rfm69_write_reg(REG_SYNCVALUE1, 0xaa);
   }
 
-  while (read_reg(REG_SYNCVALUE1) != 0x55) {
-    write_reg(REG_SYNCVALUE1, 0x55);
+  while (rfm69_read_reg(REG_SYNCVALUE1) != 0x55) {
+    rfm69_write_reg(REG_SYNCVALUE1, 0x55);
   }
 
   for (uint8_t i = 0; CONFIG[i][0] != 255; i++) {
-    write_reg(CONFIG[i][0], CONFIG[i][1]);
+    rfm69_write_reg(CONFIG[i][0], CONFIG[i][1]);
   }
 
   encrypt(0); // disable during init to start from a known state
   set_high_power();
   set_mode(RF69_MODE_STANDBY);
-  while ((read_reg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00);
+  while ((rfm69_read_reg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00);
 
   // set isr for interrupt pin rising rmf_interrupt = PA5
   // TODO replace PIN5CTRL with pin
@@ -130,9 +130,9 @@ uint16_t get_id() {
  */
 ISR(PORTA_PORT_vect) {
   inISR = 1;
-  if (mode == RF69_MODE_RX && (read_reg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY)) {
+  if (mode == RF69_MODE_RX && (rfm69_read_reg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY)) {
     set_mode(RF69_MODE_STANDBY);
-    select();
+    rfm69_select();
     spi_transfer_byte(REG_FIFO & 0x7F);
     PAYLOADLEN = spi_transfer_byte(0);
     if (PAYLOADLEN>66) PAYLOADLEN=66;
@@ -140,7 +140,7 @@ ISR(PORTA_PORT_vect) {
     if (!(promiscuous_mode || TARGETID == address || TARGETID == RF69_BROADCAST_ADDR) // match this node's address, or broadcast address or anything in promiscuous mode
     || PAYLOADLEN < 5) { // address situation could receive packets that are malformed and don't fit this libraries extra fields
       PAYLOADLEN = 0;
-      unselect();
+      rfm69_unselect();
       receive_begin();
       return;
     }
@@ -156,7 +156,7 @@ ISR(PORTA_PORT_vect) {
         DATA[i] = spi_transfer_byte(0);
     }
     if (DATALEN < RF69_MAX_DATA_LEN) DATA[DATALEN] = 0; // add null at end of string
-    unselect();
+    rfm69_unselect();
     set_mode(RF69_MODE_RX);
   }
   RSSI = read_rssi(0);
@@ -180,7 +180,7 @@ int16_t get_data(char *data, uint8_t size) {
 /*
  * enable spi transfer
  */
-void select() {
+void rfm69_select() {
   set_output(&rfm_cs, 0);
   cli();
 }
@@ -188,25 +188,25 @@ void select() {
 /*
  * disable spi transfer
  */
-void unselect() {
+void rfm69_unselect() {
   set_output(&rfm_cs, 1);
   if (!inISR) sei();
 }
 
-uint8_t read_reg(uint8_t addr) {
-  select();
+uint8_t rfm69_read_reg(uint8_t addr) {
+  rfm69_select();
   spi_transfer_byte(addr & 0x7F);
   uint8_t val = spi_transfer_byte(0);
-  unselect();
+  rfm69_unselect();
 
   return val;
 }
 
-void write_reg(uint8_t addr, uint8_t value) {
-  select();
+void rfm69_write_reg(uint8_t addr, uint8_t value) {
+  rfm69_select();
   spi_transfer_byte(addr | 0x80);
   spi_transfer_byte(value);
-  unselect();
+  rfm69_unselect();
 }
 
 /*
@@ -216,69 +216,68 @@ void write_reg(uint8_t addr, uint8_t value) {
 void encrypt(const char* key) {
   set_mode(RF69_MODE_STANDBY);
   if (key != 0) {
-    select();
+    rfm69_select();
     spi_transfer_byte(REG_AESKEY1 | 0x80);
     for (uint8_t i=0; i<16; i++) {
       spi_transfer_byte(key[i]);
     }
-    unselect();
+    rfm69_unselect();
   }
-  write_reg(REG_PACKETCONFIG2, (read_reg(REG_PACKETCONFIG2) & 0xFE) | (key ? 1:0));
+  rfm69_write_reg(REG_PACKETCONFIG2, (rfm69_read_reg(REG_PACKETCONFIG2) & 0xFE) | (key ? 1:0));
 }
 
-void set_mode(uint8_t new_mode)
-{
+void set_mode(uint8_t new_mode) {
   if (new_mode == mode) return;
 
   switch (new_mode) {
     case RF69_MODE_TX:
-      write_reg(REG_OPMODE, (read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_TRANSMITTER);
+      rfm69_write_reg(REG_OPMODE, (rfm69_read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_TRANSMITTER);
       if (is_rfm69hw) set_high_power_regs(1);
       break;
     case RF69_MODE_RX:
-      write_reg(REG_OPMODE, (read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_RECEIVER);
+      rfm69_write_reg(REG_OPMODE, (rfm69_read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_RECEIVER);
       if (is_rfm69hw) set_high_power_regs(0);
       break;
     case RF69_MODE_SYNTH:
-      write_reg(REG_OPMODE, (read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_SYNTHESIZER);
+      rfm69_write_reg(REG_OPMODE, (rfm69_read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_SYNTHESIZER);
       break;
     case RF69_MODE_STANDBY:
-      write_reg(REG_OPMODE, (read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_STANDBY);
+      rfm69_write_reg(REG_OPMODE, (rfm69_read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_STANDBY);
       break;
     case RF69_MODE_SLEEP:
-      write_reg(REG_OPMODE, (read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_SLEEP);
+      rfm69_write_reg(REG_OPMODE, (rfm69_read_reg(REG_OPMODE) & 0xE3) | RF_OPMODE_SLEEP);
       break;
     default:
       return;
   }
   // we are using packet mode, so this check is not really needed
   // but waiting for mode ready is necessary when going from sleep because the FIFO may not be immediately available from previous mode
-  while (mode == RF69_MODE_SLEEP && (read_reg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
+  while (mode == RF69_MODE_SLEEP && (rfm69_read_reg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
   mode = new_mode;
 }
 
 void set_high_power_regs(uint8_t on_off) {
   if (on_off == 1) {
-    write_reg(REG_TESTPA1, 0x5D);
-    write_reg(REG_TESTPA2, 0x7C);
+    rfm69_write_reg(REG_TESTPA1, 0x5D);
+    rfm69_write_reg(REG_TESTPA2, 0x7C);
   } else {
-    write_reg(REG_TESTPA1, 0x55);
-    write_reg(REG_TESTPA2, 0x70);
+    rfm69_write_reg(REG_TESTPA1, 0x55);
+    rfm69_write_reg(REG_TESTPA2, 0x70);
   }
 }
 
 void set_high_power() {
-  write_reg(REG_OCP, is_rfm69hw ? RF_OCP_OFF : RF_OCP_ON);
+  rfm69_write_reg(REG_OCP, is_rfm69hw ? RF_OCP_OFF : RF_OCP_ON);
   if (is_rfm69hw == 1)
-    write_reg(REG_PALEVEL, (read_reg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON); // enable P1 & P2 amplifier stages
+    rfm69_write_reg(REG_PALEVEL, (rfm69_read_reg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON); // enable P1 & P2 amplifier stages
   else
-    write_reg(REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | power_level); // enable P0 only
+    rfm69_write_reg(REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | power_level); // enable P0 only
 }
 
 void set_power_level(uint8_t level) {
   power_level = (level > 31 ? 31 : level);
   if (is_rfm69hw == 1) power_level /= 2;
-  write_reg(REG_PALEVEL, (read_reg(REG_PALEVEL) & 0xE0) | power_level);
+  rfm69_write_reg(REG_PALEVEL, (rfm69_read_reg(REG_PALEVEL) & 0xE0) | power_level);
 
 }
 
@@ -288,19 +287,19 @@ void rfm69_sleep() {
 
 uint8_t read_temperature() {
   set_mode(RF69_MODE_STANDBY);
-  write_reg(REG_TEMP1, RF_TEMP1_MEAS_START);
-  while ((read_reg(REG_TEMP1) & RF_TEMP1_MEAS_RUNNING));
-  return ~read_reg(REG_TEMP2) + COURSE_TEMP_COEF;
+  rfm69_write_reg(REG_TEMP1, RF_TEMP1_MEAS_START);
+  while ((rfm69_read_reg(REG_TEMP1) & RF_TEMP1_MEAS_RUNNING));
+  return ~rfm69_read_reg(REG_TEMP2) + COURSE_TEMP_COEF;
 }
 
 int16_t read_rssi(uint8_t force_trigger) {
   int16_t rssi = 0;
   if (force_trigger == 1) {
     // RSSI trigger not needed if DAGC is in continuous mode
-    write_reg(REG_RSSICONFIG, RF_RSSI_START);
-    while ((read_reg(REG_RSSICONFIG) & RF_RSSI_DONE) == 0x00); // wait for RSSI_Ready
+    rfm69_write_reg(REG_RSSICONFIG, RF_RSSI_START);
+    while ((rfm69_read_reg(REG_RSSICONFIG) & RF_RSSI_DONE) == 0x00); // wait for RSSI_Ready
   }
-  rssi = -read_reg(REG_RSSIVALUE);
+  rssi = -rfm69_read_reg(REG_RSSIVALUE);
   rssi >>= 1;
   return rssi;
 }
@@ -346,15 +345,15 @@ void receive_begin() {
   ACK_RECEIVED = 0;
   RSSI = 0;
 
-  if (read_reg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY)
-    write_reg(REG_PACKETCONFIG2, (read_reg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
+  if (rfm69_read_reg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY)
+    rfm69_write_reg(REG_PACKETCONFIG2, (rfm69_read_reg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
 
-  write_reg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_01); // set DIO0 to "PAYLOADREADY" in receive mode
+  rfm69_write_reg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_01); // set DIO0 to "PAYLOADREADY" in receive mode
   set_mode(RF69_MODE_RX);
 }
 
 void send(uint16_t to, const void* buffer, uint8_t size, uint8_t request_ack) {
-  write_reg(REG_PACKETCONFIG2, (read_reg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
+  rfm69_write_reg(REG_PACKETCONFIG2, (rfm69_read_reg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   while (!can_send()) receive_done();
   send_frame(to, buffer, size, request_ack, 0);
 }
@@ -382,7 +381,7 @@ uint8_t send_retry(uint16_t to, const void* buffer, uint8_t size, uint8_t retrie
 void send_frame(uint16_t to, const void* buffer, uint8_t size, uint8_t request_ack, uint8_t send_ack) {
   // DF("%u: '%s' (%u)", to, (char*)buffer, size);
   set_mode(RF69_MODE_STANDBY); // turn off receiver to prevent reception while filling fifo
-  while ((read_reg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
+  while ((rfm69_read_reg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
   if (size > RF69_MAX_DATA_LEN) size = RF69_MAX_DATA_LEN;
 
   // control byte
@@ -393,7 +392,7 @@ void send_frame(uint16_t to, const void* buffer, uint8_t size, uint8_t request_a
     ctl_byte = RFM69_CTL_REQACK;
 
   // write to FIFO
-  select();
+  rfm69_select();
   spi_transfer_byte(REG_FIFO | 0x80);
   spi_transfer_byte(size + 5);
   spi_transfer_byte((uint8_t)((to >> 8) & 0xff)); // high byte
@@ -404,33 +403,33 @@ void send_frame(uint16_t to, const void* buffer, uint8_t size, uint8_t request_a
 
   for (uint8_t i = 0; i < size; i++)
     spi_transfer_byte(((uint8_t*) buffer)[i]);
-  unselect();
+  rfm69_unselect();
 
   // no need to wait for transmit mode to be ready since its handled by the radio
   set_mode(RF69_MODE_TX);
   //uint32_t txStart = millis();
   //while (digitalRead(_interruptPin) == 0 && millis() - txStart < RF69_TX_LIMIT_MS); // wait for DIO0 to turn HIGH signalling transmission finish
-  while ((read_reg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT) == 0x00); // wait for PacketSent
+  while ((rfm69_read_reg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT) == 0x00); // wait for PacketSent
   set_mode(RF69_MODE_STANDBY);
 }
 
 void promiscuous(uint8_t on_off) {
   promiscuous_mode = on_off;
   if (promiscuous_mode == 0)
-    write_reg(REG_PACKETCONFIG1, (read_reg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_NODEBROADCAST);
+    rfm69_write_reg(REG_PACKETCONFIG1, (rfm69_read_reg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_NODEBROADCAST);
   else
-    write_reg(REG_PACKETCONFIG1, (read_reg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_OFF);
+    rfm69_write_reg(REG_PACKETCONFIG1, (rfm69_read_reg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_OFF);
 }
 
 void set_network(uint8_t id) {
-  write_reg(REG_SYNCVALUE2, id);
+  rfm69_write_reg(REG_SYNCVALUE2, id);
 }
 
 void send_ack(const void *buffer, uint8_t size) {
   ACK_REQUESTED = 0;   // TWS added to make sure we don't end up in a timing race and infinite loop sending Acks
   uint8_t sender = SENDERID;
   int16_t _RSSI = RSSI; // save payload received RSSI value
-  write_reg(REG_PACKETCONFIG2, (read_reg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
+  rfm69_write_reg(REG_PACKETCONFIG2, (rfm69_read_reg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   while (!can_send()) receive_done();
   SENDERID = sender;    // TWS: Restore SenderID after it gets wiped out by receiveDone() n.b. actually now there is no receiveDone() :D
   send_frame(sender, buffer, size, 0, 1);
