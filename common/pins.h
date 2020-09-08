@@ -54,6 +54,7 @@ void clear_all_pins();
 void set_direction(pin_t *pin, uint8_t direction=1);
 void set_output(pin_t *pin, uint8_t value);
 void toggle_output(pin_t *pin);
+uint8_t get_output(pin_t *pin);
 void set_pullup(pin_t *pin, uint8_t clear=0);
 
 uint8_t adc_is_running(pin_t *pin);

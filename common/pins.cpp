@@ -79,6 +79,13 @@ void toggle_output(pin_t *pin) {
 }
 
 /*
+ * get value of output pin
+ */
+uint8_t get_output(pin_t *pin) {
+  return ((*pin).port->IN & (1<<(*pin).pin)) != 0;
+}
+
+/*
  * set pullup or clear it for a pin
  * ie set_pullup(touch); // activates pullup on touch
  *

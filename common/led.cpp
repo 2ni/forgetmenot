@@ -9,6 +9,7 @@
 
 #include "led.h"
 #include "sleep.h"
+#include "pins.h"
 
 void led_on(pin_t *led) {
   set_direction(led); // set output
@@ -22,7 +23,7 @@ void led_on_all() {
 }
 
 uint8_t led_is_on(pin_t *led) {
-  return (*led).port->IN & (1<<(*led).pin);
+  return get_output(led) == 1;
 }
 
 void led_off(pin_t *led) {
