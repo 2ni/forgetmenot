@@ -49,7 +49,7 @@ int main(void) {
     data[4] = (tm >> 8) & 0xff;
     data[5] = tm & 0xff;
 
-    DL("sending");
+    DF("sending (%u)\n", counter);
     led_flash(&led_b, 1);
     lora_send_data(data, len, counter);
     counter++;
