@@ -2,6 +2,9 @@
  * from https://www.thethingsnetwork.org/forum/t/attiny85-rfm95-temperature-sensor/11211
  *
  * ABP implementation, no downlink
+ * add device address, network session key, app session key from
+ * https://console.thethingsnetwork.org/applications/forgetmenot/devices/<devicename>/settings
+ * to common/aes_keys.h
  *
  * improvements (from the comments):
  * if you would like to use a semi-random key to select the channel,
