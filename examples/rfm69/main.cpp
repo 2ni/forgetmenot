@@ -8,7 +8,7 @@
 #include "rfm69.h"
 #include "spi.h"
 #include "rfm69_registers.h"
-#include "timer.h"
+#include "sleep.h"
 
 #define NODE 2
 #define TONODE 99
@@ -101,12 +101,10 @@ int main(void) {
   // uint8_t ack_request = 1;
   char incoming[RF69_MAX_DATA_LEN+1];
   int16_t rssi;
-  uint16_t sleep_time = 2000;
+  uint8_t sleep_time = 2;
 
   char cmd;
-  unsigned int value;
 
-  timer.start(2000);
   while (1) {
     // node
     if (timer.timed_out()) {
@@ -116,9 +114,8 @@ int main(void) {
       DF("send_retry: %u->%u (%u): '%s'", NODE, TONODE, NETWORK, msg);
       if (send_retry(TONODE, msg, len, 3, &timer)) {
         rssi = get_data(incoming, RF69_MAX_DATA_LEN);
-        sscanf(incoming, " %c:%u", &cmd, &value);
+        sscanf(incoming, " %c:%u", &cmd, &sleep_time);
         if (cmd=='s') {
-          sleep_time = value * 1000; // convert in ms
           // DF("((%c, %u))", cmd, value);
         }
         /*
@@ -148,8 +145,7 @@ int main(void) {
       DLF();
       */
 
-      sleep();
-      timer.start(sleep_time);
+      sleep_s(sleep_time);
     }
 
     /*

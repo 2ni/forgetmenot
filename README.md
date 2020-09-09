@@ -1,8 +1,22 @@
 ### purpose
 This is the software used for my forgetmenot board based on ATtiny3217 (alternative ATtiny1617, ATtiny817).
 See [hardware](hardware).
-It measures temperature, humidity of soil and outputs result on led's, on a ST7789 screen or
-sends the data via RFM95 or RMF69 to a server.
+The board can:
+- [X] measure temperature on chip / board / humidity sensor
+- [X] measure soil humidity
+- [X] send/receive data via RFM69 to [gateway](https://github.com/2ni/python3-rfm69gateway)
+- [X] send data via RFM95 (abp mode)
+- [ ] send data via RFM95 (otaa mode)
+- [X] notify via LED's
+- [X] control a motor via bridge
+- [ ] output data on ST7735
+- [ ] handle touch sensor (short/long press)
+- [ ] read hall sensor (magnetic switch)
+- [X] measure battery voltage
+- [X] sleep
+- [X] debug output to serial (input is not possible on this version of the board)
+- [ ] BOD (brown-out detector) on low voltages
+
 This is a complete new version of a [sensor based on the ATtiny88](https://github.com/2ni/attiny88).
 
 ### installation
@@ -14,8 +28,12 @@ pip install -r requirements
 make build port=3
 ```
 
-### examples
-There are many examples in the ./examples folder. To upload one of it:
+### directory structure
+- examples: many examples
+- node: main sensor project
+- common: commonly used "libraries"
+
+To upload one of the examples or node:
 ```
 ./activate.py examples/blink
 make build port=3

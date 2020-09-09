@@ -4,9 +4,6 @@
  * https://github.com/2ni/python3-rfm69gateway
  */
 
-#include <string.h>
-#include <util/delay.h>
-
 #include "pins.h"
 #include "uart.h"
 #include "led.h"
