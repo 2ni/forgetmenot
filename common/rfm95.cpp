@@ -58,8 +58,8 @@ uint8_t rfm95_init() {
   rfm95_write_reg(0x07, 0x06);
   rfm95_write_reg(0x08, 0x8B);
 
-  // PA pin (maximal power)
-  rfm95_write_reg(0x09, 0xFF);
+  // PA pin (medium power)
+  rfm95_write_reg(0x09, 0xAF);
 
   // BW = 125 kHz, Coding rate 4/5, Explicit header mode
   rfm95_write_reg(0x1D, 0x72);
