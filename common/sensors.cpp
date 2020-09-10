@@ -1,4 +1,5 @@
 #include "sensors.h"
+#include <math.h>
 
 /*
  * values according to sheet https://docs.google.com/spreadsheets/d/1KOPVIqWLB8RtdWV2ETXrc3K58mqvxZQhDzQeA-0KVI4/edit#gid=679079026
@@ -27,55 +28,56 @@ const temp_characteristics_struct temp_characteristics[] = {
   {450,  85}
 };
 
-
 /*
  * measure temperature with sensors on the board or humidity sensor
- *
- * device: 'b' for board  (PC0, ADC1 AIN6, TEMPBOARD=TEMP1)
- *         's' for sensor (PC2, ADC1 AIN8, TEMPSENSOR=TEMP2)
  */
-uint16_t get_temp_board() {
-  return get_temp(&pin_temp_board);
+uint16_t get_temp_board(uint8_t use_float, uint16_t vbat) {
+  return get_temp(&pin_temp_board, use_float, vbat);
 }
 
-uint16_t get_temp_moist() {
-  return get_temp(&pin_temp_moisture);
+uint16_t get_temp_moist(uint8_t use_float, uint16_t vbat) {
+  return get_temp(&pin_temp_moisture, use_float, vbat);
 }
 
-// TODO depending on pin it could be ADC0 and therefore VREF.CTRLA
-uint16_t get_temp(pin_t *pin) {
+/*
+ * calculate temperature
+ * - with predefined table based on vbat = 3.1v
+ * - with float arithmetic based on Rnominal, Tnominal, beta coefficient, Vbat
+ *
+ * Vref = 1.5v
+ * Vbat must be given as eg 330 for 3.3v
+ *
+ * TODO depending on pin it could be ADC0 and therefore VREF.CTRLA
+ */
+uint16_t get_temp(pin_t *pin, uint8_t use_float, uint16_t vbat) {
   VREF.CTRLC = VREF_ADC1REFSEL_1V5_gc;
   (*pin).port_adc->CTRLC = ADC_PRESC_DIV128_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
 
   // get average
-  uint32_t value = 0;
   uint8_t samples = 1;
+  uint32_t adc = 0;
   for (uint8_t i=0; i<samples; i++) {
     uint16_t v = get_adc(pin);
     // DF("  v: %u\n", v);
-    value += v;
+    adc += v;
   }
+  adc /= samples;
 
-  return adc2temp(value/samples);
+  if (use_float) {
+    float vt, t;
+    vt = 150.0 * adc / 1023;          // Vref = 1.5v
+    t = 1000.0 * vt / (vbat - vt);    // Rseries = 1MΩ
+    t /= 100;                       // Rnominal = 100kΩ
+    t = log(t);
+    t /= 4150;                      // beta coefficient
+    t += 1.0 / (25 + 273.15);       // Tnominal = 25°C
+    t = 1.0 / t;
+    t -= 273.15;
 
-  /*
-  uint8_t MUXPOS = ADC_MUXPOS_AIN6_gc;
-  if (device == 's') {
-    MUXPOS = ADC_MUXPOS_AIN8_gc;
+    return (uint16_t)(t*10);
+  } else {
+    return adc2temp(adc);
   }
-
-  ADC1.MUXPOS = MUXPOS;
-  ADC1.CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_INTREF_gc | (0<<ADC_SAMPCAP_bp);
-  ADC1.CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
-
-  VREF.CTRLC = VREF_ADC1REFSEL_1V5_gc;
-
-  ADC1.COMMAND |= 1;
-  while (!(ADC1.INTFLAGS & ADC_RESRDY_bm));
-
-  ADC1.CTRLA = 0;                       // disable adc
-  return adc2temp(ADC1.RES);
-  */
 }
 
 /*

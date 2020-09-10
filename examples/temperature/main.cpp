@@ -55,7 +55,14 @@ int main(void) {
     temp_moist_raw = get_temp_moist();
     uart_u2c(temp_moist, temp_moist_raw, 1);
 
-    DF("temp cpu: %u, board: %s (%u), moisture: %s (%u)\n", temp_cpu, temp_board, temp_board_raw, temp_moist, temp_moist_raw);
+    DF("temp cpu: %u, board: %s (%u:%u), moisture: %s (%u:%u)\n",
+      temp_cpu,
+      temp_board,
+      temp_board_raw,
+      get_temp_board(1, vcc_cpu_raw), // use floating point arithmetic to get temperature instead of lookup table
+      temp_moist, temp_moist_raw,
+      get_temp_moist(1, vcc_cpu_raw)
+    );
 
     sleep_ms(2000);
   }
