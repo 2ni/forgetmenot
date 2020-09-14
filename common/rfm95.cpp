@@ -1,6 +1,8 @@
 /*
  * from https://www.thethingsnetwork.org/forum/t/attiny85-rfm95-temperature-sensor/11211
  *
+ * see lorawan spec https://lora-alliance.org/resource-hub/lorawanr-specification-v103
+ *
  * ABP implementation, no downlink
  * add device address, network session key, app session key from
  * https://console.thethingsnetwork.org/applications/forgetmenot/devices/<devicename>/settings
@@ -10,6 +12,64 @@
  * if you would like to use a semi-random key to select the channel,
  * just take a byte from the encrypted payload (or a byte from the MIC)
  * and mask-out the 3 least significant bits as a pointer to the channel
+ *
+ * -> see https://github.com/ClemensRiederer/TinyLoRa-BME280_v1.1/blob/master/ATtinyLoRa.cpp#L101
+ *
+ * {
+ *   "time": "2020-09-14T16:48:30.275586351Z",
+ *   "frequency": 868.1,
+ *   "modulation": "LORA",
+ *   "data_rate": "SF7BW125",
+ *   "coding_rate": "4/5",
+ *   "gateways": [
+ *     {
+ *       "gtw_id": "eui-b827ebfffe03753a",
+ *       "timestamp": 98406867,
+ *       "time": "2020-09-14T16:48:30.242795Z",
+ *       "channel": 0,
+ *       "rssi": -110,
+ *       "snr": 3.5,
+ *       "latitude": 47.382,
+ *       "longitude": 8.541,
+ *       "altitude": 433
+ *     },
+ *     {
+ *       "gtw_id": "ttn-tdse-gw-01",
+ *       "timestamp": 2408293347,
+ *       "time": "2020-09-14T16:48:30Z",
+ *       "channel": 0,
+ *       "rssi": -104,
+ *       "snr": -4.75
+ *     },
+ *     {
+ *       "gtw_id": "eui-b827ebfffe162cc4",
+ *       "timestamp": 3301675763,
+ *       "time": "2020-09-14T16:48:30.240182Z",
+ *       "channel": 0,
+ *       "rssi": -111,
+ *       "snr": -1.5,
+ *       "latitude": 47.374,
+ *       "longitude": 8.548,
+ *       "altitude": 443
+ *     },
+ *     {
+ *       "gtw_id": "eui-58a0cbfffe8002fa",
+ *       "timestamp": 4270618907,
+ *       "time": "2020-09-14T16:48:30.258169889Z",
+ *       "channel": 0,
+ *       "rssi": -115,
+ *       "snr": -6.25
+ *     },
+ *     {
+ *       "gtw_id": "eui-b827ebfffe97f686",
+ *       "timestamp": 247372843,
+ *       "time": "2020-09-14T16:48:30.239936Z",
+ *       "channel": 0,
+ *       "rssi": -107,
+ *       "snr": 3.8
+ *     }
+ *   ]
+ * }
  *
  */
 
@@ -25,7 +85,7 @@
 #include "aes_keys.h"
 
 #if !defined(__AES_KEYS_H__)
-#warning "pls define keys in aes_keys.h"
+#error "pls define your abp keys in aes_keys.h"
 #endif
 
 uint8_t rfm95_init() {
@@ -48,7 +108,7 @@ uint8_t rfm95_init() {
   // lora mode
   rfm95_write_reg(0x01, 0x80);
 
-  // standby mode wait on mode ready
+  // standby mode and lora mode
   rfm95_write_reg(0x01, 0x81);
   _delay_ms(10);
 
@@ -128,16 +188,11 @@ void rfm95_write_reg(uint8_t addr, uint8_t value) {
 }
 
 /*
-*****************************************************************************************
-* Description : Function contstructs a LoRaWAN package and sends it
-*
-* Arguments   : *Data pointer to the array of data that will be transmitted
-*               Data_Length nuber of bytes to be transmitted
-*               Frame_Counter_Up  Frame counter of upstream frames
-*****************************************************************************************
-*/
+ * mic = aes128_cmac(NwkSKey, B0 | msg)
+ * B0 = 0x49, 0x00 (4), direction (1), devaddr (4), counter (4), 0x00, lenmsg (1)
+ */
 void lora_send_data(uint8_t *data, uint8_t data_length, uint16_t frame_counter_tx) {
-  // direction of frame is up
+  // uplink (to gateway)
   uint8_t direction = 0x00;
 
   uint8_t package[64];
@@ -145,10 +200,11 @@ void lora_send_data(uint8_t *data, uint8_t data_length, uint16_t frame_counter_t
 
   uint8_t mic[4];
 
+  // aes_128_encrypt(K, A) for i=1..k
   aes_encrypt_payload(data, data_length, frame_counter_tx, direction);
 
   // build the radio package
-  package[0] = 0x40; // mac_header
+  package[0] = 0x40; // mac_header (mtype 010: unconfirmed data uplink)
 
   package[1] = DEVADDR[3];
   package[2] = DEVADDR[2];
@@ -170,7 +226,7 @@ void lora_send_data(uint8_t *data, uint8_t data_length, uint16_t frame_counter_t
     package[package_length + i] = data[i];
   }
 
-  //Add data Lenth to package length
+  // add data Lenth to package length
   package_length = package_length + data_length;
 
   // calculate mic
@@ -188,42 +244,82 @@ void lora_send_data(uint8_t *data, uint8_t data_length, uint16_t frame_counter_t
 }
 
 /*
-*****************************************************************************************
-* Description : Function for sending a package with the RFM
-*
-* Arguments   : *package Pointer to arry with data to be send
-*               Package_Length  Length of the package to send
-*****************************************************************************************
+ * data = appeui (8)  deveui (8) DevNonce (2)
+ * mic = aes128_cmac(AppKey, MHDR | AppEUI | DevEUI | DevNonce)
+ *
+ * https://lora-alliance.org/sites/default/files/2020-06/rp_2-1.0.1.pdf
+ * RECEIVE_DELAY1 1s
+ * RECEIVE_DELAY2 2s (RECEIVE_DELAY1 + 1s)
+ *
+ * JOIN_ACCEPT_DELAY1 5s
+ * JOIN_ACCEPT_DELAY2 6s
+ *
+ * join accept
+ * data = AppNonce(3) NetID(3) DevAddr(4), DLSettings(1) RxDelay(1) CFList(16 optional)
+ *
+ * NwkSKey = aes128_encrypt(AppKey, 0x01 | AppNonce | NetID | DevNonce | pad16)
+ * AppSKey = aes128_encrypt(AppKey, 0x02 | AppNonce | NetID | DevNonce | pad16)
+ * pad16 = appends zero octects so that length is multiple of 16
+ * cmac = aes128_cmac(AppKey, MHDR | AppNonce | NetID | DevAddr | DLSettings | RxDelay | CFList)
+ * mic = cmac[0..3]
+ */
+/*
+void lora_join_request(uint32_t dev_nonce) {
+  uint32_t package_length = 23;
+  uint8_t package[package_length];
+  uint8_t mic[4];
+  uint8_t direction = 0x00;
+
+  package[0] = 0x00; // mac_header (mtype 000: join request)
+
+  for (uint8_t i=0; i<8; i++) {
+    package[1+i] = APPEUI[i];
+  }
+
+  for (uint8_t i=0; i<8; i++) {
+    package[9+i] = DEVEUI[i];
+  }
+
+  package[17] = (dev_nonce & 0x00FF);
+  package[18] = ((dev_nonce >> 8) & 0x00FF);
+
+  aes_calculate_mic(package, mic, package_length);
+  for (uint8_t i=0; i<4; i++) {
+    package[19+i] = mic[i];
+  }
+
+  rfm95_send_package(package, package_length);
+}
 */
 
 void rfm95_send_package(uint8_t *package, uint8_t package_length) {
   uint8_t i;
   // uint8_t rfm_tx_location = 0x00;
 
-  // set rfm in standby mode wait on mode ready
+  // set rfm in standby mode and lora mode
   rfm95_write_reg(0x01, 0x81);
   // while (digitalRead(DIO5) == LOW) {}
   _delay_ms(10);
 
-  //Switch DIO0 to TxDone
+  // switch DIO0 to TxDone
   rfm95_write_reg(0x40, 0x40);
 
-  //Set carrier frequency
+  // set carrier frequency
   // 868.100 MHz / 61.035 Hz = 14222987 = 0xD9068B
   rfm95_write_reg(0x06, 0xD9);
   rfm95_write_reg(0x07, 0x06);
   rfm95_write_reg(0x08, 0x8B);
 
-  //SF7 BW 125 kHz
+  // sF7 BW 125 kHz
   rfm95_write_reg(0x1E, 0x74); //SF7 CRC On
   rfm95_write_reg(0x1D, 0x72); //125 kHz 4/5 coding rate explicit header mode
   rfm95_write_reg(0x26, 0x04); //Low datarate optimization off AGC auto on
 
-  //Set IQ to normal values
+  // set IQ to normal values
   rfm95_write_reg(0x33, 0x27);
   rfm95_write_reg(0x3B, 0x1D);
 
-  //Set payload length to the right length
+  // set payload length to the right length
   rfm95_write_reg(0x22, package_length);
 
   // get location of Tx part of FiFo
@@ -258,7 +354,7 @@ void aes_encrypt_payload(uint8_t *data, uint8_t data_length, uint16_t frame_coun
 
   uint8_t block_a[16];
 
-  //Calculate number of blocks
+  // calculate number of blocks
   number_of_blocks = data_length / 16;
   incomplete_block_size = data_length % 16;
   if (incomplete_block_size != 0) {
@@ -311,6 +407,10 @@ void aes_encrypt_payload(uint8_t *data, uint8_t data_length, uint16_t frame_coun
   }
 }
 
+/*
+ * rfc4493
+ * https://tools.ietf.org/html/rfc4493
+ */
 void aes_calculate_mic(uint8_t *data, uint8_t *final_mic, uint8_t data_length, uint16_t frame_counter, uint8_t direction) {
   uint8_t i;
   uint8_t block_b[16];
@@ -324,7 +424,7 @@ void aes_calculate_mic(uint8_t *data, uint8_t *final_mic, uint8_t data_length, u
   uint8_t incomplete_block_size = 0;
   uint8_t block_counter = 0x01;
 
-  //Create block_b
+  // create block_b B0
   block_b[0] = 0x49;
   block_b[1] = 0x00;
   block_b[2] = 0x00;
@@ -373,9 +473,11 @@ void aes_calculate_mic(uint8_t *data, uint8_t *final_mic, uint8_t data_length, u
     }
 
     // perform xor with old data
+    // data ^ encrypt(block_b)
     aes_xor(new_data, old_data);
 
     // perform aes encryption
+    // encrypt(data ^ encrypt(block_b))
     aes_encrypt(new_data, NWKSKEY);
 
     // copy new_data to old_data
@@ -438,7 +540,7 @@ void aes_calculate_mic(uint8_t *data, uint8_t *final_mic, uint8_t data_length, u
 void aes_generate_keys(uint8_t *k1, uint8_t *k2) {
   uint8_t msb_key;
 
-  //Encrypt the zeros in k1 with the NWKSKEY
+  // encrypt the zeros in k1 with the NWKSKEY
   aes_encrypt(k1, NWKSKEY);
 
   // create k1
@@ -655,4 +757,21 @@ void aes_calculate_round_key(uint8_t round, uint8_t *round_key) {
       temp[j]                   = round_key[j + (i << 2)];
     }
   }
+}
+
+/*
+ * set power 5-23dBm
+ * based on https://github.com/adafruit/RadioHead/blob/master/RH_RF95.cpp#L392
+ */
+void rfm95_setpower(int8_t power) {
+  if (power > 20) {
+    rfm95_write_reg(0x4d, 0x07); // RH_RF95_PA_DAC_ENABLE: adds ~3dBm to all power levels, use it for 21, 22, 23dBm
+    power -= 3;
+  } else {
+    rfm95_write_reg(0x4d, 0x04); // RH_RF95_PA_DAC_DISABLE
+  }
+
+  // RegPAConfig MSB = 1 to choose PA_BOOST
+  //
+  rfm95_write_reg(0x09, 0x80 | (power-5));
 }

@@ -21,5 +21,6 @@ void    aes_mix_columns(uint8_t (*state)[4]);
 void    aes_shift_left(uint8_t *data);
 void    aes_xor(uint8_t *new_data, uint8_t *old_data);
 uint8_t aes_sub_byte(uint8_t byte);
+void rfm95_setpower(int8_t power);
 
 #endif
