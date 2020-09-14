@@ -154,3 +154,12 @@ void uart_u2c(char *buf, uint16_t value, uint8_t precision) {
   }
   buf[p_write+1] = '\0';
 }
+
+
+void uart_arr(const char *name, uint8_t *arr, uint8_t len) {
+  DF("%s:", name);
+  for(uint8_t i=0; i<len; i++) {
+    DF(" %02x", arr[i]);
+  }
+  DL("");
+}
