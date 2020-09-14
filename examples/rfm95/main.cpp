@@ -14,7 +14,7 @@ int main(void) {
 
   DINIT();
   uint32_t node = get_deviceid();
-  DF("Hello from 0x%06lX\n", node);
+  DF("\n\033[1;38;5;226;48;5;18mHello from 0x%06lX\033[0m\n", node);
 
   led_flash(&led_g, 3);
   led_on(&led_b);
