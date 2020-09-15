@@ -64,3 +64,53 @@ void lorawan_create_package(uint8_t *msg, uint8_t size, uint16_t counter, uint8_
   // load calculated mic=cmac[0..3] to package
   aes128_copy_array(&package[size+9], cmac, 4);
 }
+
+/*
+ * data = appeui (8)  deveui (8) DevNonce (2)
+ * mic = aes128_cmac(AppKey, MHDR | AppEUI | DevEUI | DevNonce)
+ *
+ * https://lora-alliance.org/sites/default/files/2020-06/rp_2-1.0.1.pdf
+ * RECEIVE_DELAY1 1s
+ * RECEIVE_DELAY2 2s (RECEIVE_DELAY1 + 1s)
+ *
+ * JOIN_ACCEPT_DELAY1 5s
+ * JOIN_ACCEPT_DELAY2 6s
+ *
+ * join accept
+ * data = AppNonce(3) NetID(3) DevAddr(4), DLSettings(1) RxDelay(1) CFList(16 optional)
+ *
+ * NwkSKey = aes128_encrypt(AppKey, 0x01 | AppNonce | NetID | DevNonce | pad16)
+ * AppSKey = aes128_encrypt(AppKey, 0x02 | AppNonce | NetID | DevNonce | pad16)
+ * pad16 = appends zero octects so that length is multiple of 16
+ * cmac = aes128_cmac(AppKey, MHDR | AppNonce | NetID | DevAddr | DLSettings | RxDelay | CFList)
+ * mic = cmac[0..3]
+ */
+
+/*
+void lora_join_request(uint32_t dev_nonce) {
+  uint32_t package_length = 23;
+  uint8_t package[package_length];
+  uint8_t mic[4];
+  uint8_t direction = 0x00;
+
+  package[0] = 0x00; // mac_header (mtype 000: join request)
+
+  for (uint8_t i=0; i<8; i++) {
+    package[1+i] = APPEUI[i];
+  }
+
+  for (uint8_t i=0; i<8; i++) {
+    package[9+i] = DEVEUI[i];
+  }
+
+  package[17] = (dev_nonce & 0x00FF);
+  package[18] = ((dev_nonce >> 8) & 0x00FF);
+
+  aes_calculate_mic(package, mic, package_length);
+  for (uint8_t i=0; i<4; i++) {
+    package[19+i] = mic[i];
+  }
+
+  rfm95_send_package(package, package_length);
+}
+*/

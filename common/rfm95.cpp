@@ -8,10 +8,6 @@
  * https://console.thethingsnetwork.org/applications/forgetmenot/devices/<devicename>/settings
  * to common/aes_keys.h
  *
- * improvements (from the comments):
- * if you would like to use a semi-random key to select the channel,
- * just take a byte from the encrypted payload (or a byte from the MIC)
- * and mask-out the 3 least significant bits as a pointer to the channel
  *
  * -> see https://github.com/ClemensRiederer/TinyLoRa-BME280_v1.1/blob/master/ATtinyLoRa.cpp#L101
  *
@@ -74,19 +70,12 @@
  */
 
 #include <avr/delay.h>
-#include <avr/pgmspace.h>
-#include <string.h>
 
 #include "rfm95.h"
 #include "spi.h"
 #include "sleep.h"
 #include "pins.h"
 #include "uart.h"
-#include "aes_keys.h"
-
-#if !defined(__AES_KEYS_H__)
-#error "pls define your abp keys in aes_keys.h"
-#endif
 
 uint8_t rfm95_init() {
   spi_init();
@@ -110,6 +99,7 @@ uint8_t rfm95_init() {
 
   // standby mode and lora mode
   rfm95_write_reg(0x01, 0x81);
+  // TODO delay needed?
   _delay_ms(10);
 
   // set carrier frequency
@@ -121,12 +111,6 @@ uint8_t rfm95_init() {
   // PA pin (medium power)
   rfm95_write_reg(0x09, 0xAF);
 
-  // BW = 125 kHz, Coding rate 4/5, Explicit header mode
-  rfm95_write_reg(0x1D, 0x72);
-
-  // spreading factor 7, payloadcrc On
-  rfm95_write_reg(0x1E, 0xB4);
-
   // rx timeout set to 37 symbols
   rfm95_write_reg(0x1F, 0x25);
 
@@ -135,10 +119,7 @@ uint8_t rfm95_init() {
   rfm95_write_reg(0x20, 0x00);
   rfm95_write_reg(0x21, 0x08);
 
-  // low datarate optimization off AGC auto on
-  rfm95_write_reg(0x26, 0x0C);
-
-  // set lora sync word
+  // set lora sync word (0x34)
   rfm95_write_reg(0x39, 0x34);
 
   // set iq to normal values
@@ -188,110 +169,52 @@ void rfm95_write_reg(uint8_t addr, uint8_t value) {
 }
 
 /*
- * mic = aes128_cmac(NwkSKey, B0 | msg)
- * B0 = 0x49, 0x00 (4), direction (1), devaddr (4), counter (4), 0x00, lenmsg (1)
+ * receive on 869.525, SF9
+ * https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
+ * DIO0: txdone, rxdone
+ * DIO1: rxtimeout
+ * https://gist.github.com/wero1414/522fa352ff561bcd845d5fd8149b5105
  */
-void lora_send_data(uint8_t *data, uint8_t data_length, uint16_t frame_counter_tx) {
-  // uplink (to gateway)
-  uint8_t direction = 0x00;
+void rfm95_receive_package() {
+  rfm95_write_reg(0x40, 0x00); // DIO0 -> rxdone
 
-  uint8_t package[64];
-  uint8_t package_length;
+  // invert iq back
+  rfm95_write_reg(0x33, 0x67);
+  rfm95_write_reg(0x3B, 0x19);
 
-  uint8_t mic[4];
+  // set downlink carrier frq
+  rfm95_set_channel(99); // 868.525MHz
+  rfm95_set_datarate(9); // SF9, 125kHz
 
-  // aes_128_encrypt(K, A) for i=1..k
-  aes_encrypt_payload(data, data_length, frame_counter_tx, direction);
+  // set hop frequency period to 0
+  rfm95_write_reg(0x24, 0x00);
 
-  // build the radio package
-  package[0] = 0x40; // mac_header (mtype 010: unconfirmed data uplink)
 
-  package[1] = DEVADDR[3];
-  package[2] = DEVADDR[2];
-  package[3] = DEVADDR[1];
-  package[4] = DEVADDR[0];
+  rfm95_set_channel(0); // 868.1MHz
+  rfm95_set_mode(5); // continuous rx
 
-  package[5] = 0x00; // frame_control
+  // wait for input
+  while(get_output(&rfm_interrupt) == 0) {}
 
-  package[6] = (frame_counter_tx & 0x00FF);
-  package[7] = ((frame_counter_tx >> 8) & 0x00FF);
-
-  package[8] = 0x01; // frame_port
-
-  // set current package length
-  package_length = 9;
-
-  // load data
-  for(uint8_t i = 0; i < data_length; i++) {
-    package[package_length + i] = data[i];
+  // read received package
+  // TODO needed to read start pos of buffer?
+  uint8_t start_pos = rfm95_read_reg(0x10);
+  uint8_t len = rfm95_read_reg(0x13);
+  uint8_t msg[len];
+  rfm95_write_reg(0x0D, start_pos); // set start of package read
+  for (uint8_t i=0; i<len; i++) {
+    msg[i] = rfm95_read_reg(0x00);
   }
-
-  // add data Lenth to package length
-  package_length = package_length + data_length;
-
-  // calculate mic
-  aes_calculate_mic(package, mic, package_length, frame_counter_tx, direction);
-
-  // load mic in package
-  for(uint8_t i = 0; i < 4; i++) {
-    package[i + package_length] = mic[i];
-  }
-
-  // add mic length to rfm package length
-  package_length += 4;
-
-  rfm95_send_package(package, package_length);
+  uart_arr("msg", msg, len);
 }
 
 /*
- * data = appeui (8)  deveui (8) DevNonce (2)
- * mic = aes128_cmac(AppKey, MHDR | AppEUI | DevEUI | DevNonce)
- *
- * https://lora-alliance.org/sites/default/files/2020-06/rp_2-1.0.1.pdf
- * RECEIVE_DELAY1 1s
- * RECEIVE_DELAY2 2s (RECEIVE_DELAY1 + 1s)
- *
- * JOIN_ACCEPT_DELAY1 5s
- * JOIN_ACCEPT_DELAY2 6s
- *
- * join accept
- * data = AppNonce(3) NetID(3) DevAddr(4), DLSettings(1) RxDelay(1) CFList(16 optional)
- *
- * NwkSKey = aes128_encrypt(AppKey, 0x01 | AppNonce | NetID | DevNonce | pad16)
- * AppSKey = aes128_encrypt(AppKey, 0x02 | AppNonce | NetID | DevNonce | pad16)
- * pad16 = appends zero octects so that length is multiple of 16
- * cmac = aes128_cmac(AppKey, MHDR | AppNonce | NetID | DevAddr | DLSettings | RxDelay | CFList)
- * mic = cmac[0..3]
+ * TODO
+ * improvements (from the comments):
+ * if you would like to use a semi-random key to select the channel,
+ * just take a byte from the encrypted payload (or a byte from the MIC)
+ * and mask-out the 3 least significant bits as a pointer to the channel
  */
-/*
-void lora_join_request(uint32_t dev_nonce) {
-  uint32_t package_length = 23;
-  uint8_t package[package_length];
-  uint8_t mic[4];
-  uint8_t direction = 0x00;
-
-  package[0] = 0x00; // mac_header (mtype 000: join request)
-
-  for (uint8_t i=0; i<8; i++) {
-    package[1+i] = APPEUI[i];
-  }
-
-  for (uint8_t i=0; i<8; i++) {
-    package[9+i] = DEVEUI[i];
-  }
-
-  package[17] = (dev_nonce & 0x00FF);
-  package[18] = ((dev_nonce >> 8) & 0x00FF);
-
-  aes_calculate_mic(package, mic, package_length);
-  for (uint8_t i=0; i<4; i++) {
-    package[19+i] = mic[i];
-  }
-
-  rfm95_send_package(package, package_length);
-}
-*/
-
 void rfm95_send_package(uint8_t *package, uint8_t package_length) {
   uint8_t i;
   // uint8_t rfm_tx_location = 0x00;
@@ -302,18 +225,13 @@ void rfm95_send_package(uint8_t *package, uint8_t package_length) {
   _delay_ms(10);
 
   // switch DIO0 to TxDone
+  // 0x40: RegDioMapping1, bits 7, 6
+  // 00: rxdone
+  // 01: txdone
   rfm95_write_reg(0x40, 0x40);
 
-  // set carrier frequency
-  // 868.100 MHz / 61.035 Hz = 14222987 = 0xD9068B
-  rfm95_write_reg(0x06, 0xD9);
-  rfm95_write_reg(0x07, 0x06);
-  rfm95_write_reg(0x08, 0x8B);
-
-  // sF7 BW 125 kHz
-  rfm95_write_reg(0x1E, 0x74); //SF7 CRC On
-  rfm95_write_reg(0x1D, 0x72); //125 kHz 4/5 coding rate explicit header mode
-  rfm95_write_reg(0x26, 0x04); //Low datarate optimization off AGC auto on
+  rfm95_set_channel(0); // 868.1MHz
+  rfm95_set_datarate(71); // SF7 BW 125kHz
 
   // set IQ to normal values
   rfm95_write_reg(0x33, 0x27);
@@ -346,417 +264,19 @@ void rfm95_send_package(uint8_t *package, uint8_t package_length) {
   rfm95_write_reg(0x01, 0x00);
 }
 
-void aes_encrypt_payload(uint8_t *data, uint8_t data_length, uint16_t frame_counter, uint8_t direction) {
-  uint8_t i = 0;
-  uint8_t j;
-  uint8_t number_of_blocks = 0x00;
-  uint8_t incomplete_block_size = 0x00;
-
-  uint8_t block_a[16];
-
-  // calculate number of blocks
-  number_of_blocks = data_length / 16;
-  incomplete_block_size = data_length % 16;
-  if (incomplete_block_size != 0) {
-    number_of_blocks++;
-  }
-
-  for (i=1; i<=number_of_blocks; i++) {
-    block_a[0] = 0x01;
-    block_a[1] = 0x00;
-    block_a[2] = 0x00;
-    block_a[3] = 0x00;
-    block_a[4] = 0x00;
-
-    block_a[5] = direction;
-
-    block_a[6] = DEVADDR[3];
-    block_a[7] = DEVADDR[2];
-    block_a[8] = DEVADDR[1];
-    block_a[9] = DEVADDR[0];
-
-    block_a[10] = (frame_counter & 0x00FF);
-    block_a[11] = ((frame_counter >> 8) & 0x00FF);
-
-    block_a[12] = 0x00; // frame counter upper bytes
-    block_a[13] = 0x00;
-
-    block_a[14] = 0x00;
-
-    block_a[15] = i;
-
-    // calculate S
-    aes_encrypt(block_a, APPSKEY); // original
-
-
-    // check for last block
-    if (i != number_of_blocks) {
-      for (j=0; j<16; j++) {
-        *data = *data ^ block_a[j];
-        data++;
-      }
-    } else {
-      if (incomplete_block_size == 0) {
-        incomplete_block_size = 16;
-      }
-      for (j=0; j<incomplete_block_size; j++) {
-        *data = *data ^ block_a[j];
-        data++;
-      }
-    }
-  }
-}
-
 /*
- * rfc4493
- * https://tools.ietf.org/html/rfc4493
+ * mode considers only 3 low bits
+ * 0 = sleep
+ * 1 = standby
+ * 2 = fs mode tx (FSTx)
+ * 3 = transmitter mode (Tx)
+ * 4 = fs mode rx (FSRx)
+ * 5 = receiver continuous
+ * 6 = receiver single
+ * 7 = channel activity detection
  */
-void aes_calculate_mic(uint8_t *data, uint8_t *final_mic, uint8_t data_length, uint16_t frame_counter, uint8_t direction) {
-  uint8_t i;
-  uint8_t block_b[16];
-
-  uint8_t key_k1[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-  uint8_t key_k2[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-  uint8_t old_data[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-  uint8_t new_data[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
-  uint8_t number_of_blocks = 0;
-  uint8_t incomplete_block_size = 0;
-  uint8_t block_counter = 0x01;
-
-  // create block_b B0
-  block_b[0] = 0x49;
-  block_b[1] = 0x00;
-  block_b[2] = 0x00;
-  block_b[3] = 0x00;
-  block_b[4] = 0x00;
-
-  block_b[5] = direction;
-
-  block_b[6] = DEVADDR[3];
-  block_b[7] = DEVADDR[2];
-  block_b[8] = DEVADDR[1];
-  block_b[9] = DEVADDR[0];
-
-  block_b[10] = (frame_counter & 0x00FF);
-  block_b[11] = ((frame_counter >> 8) & 0x00FF);
-
-  block_b[12] = 0x00; // frame counter upper bytes
-  block_b[13] = 0x00;
-
-  block_b[14] = 0x00;
-  block_b[15] = data_length;
-
-  // calculate number of Blocks and blocksize of last block
-  number_of_blocks = data_length / 16;
-  incomplete_block_size = data_length % 16;
-
-  if (incomplete_block_size != 0) {
-    number_of_blocks++;
-  }
-
-  aes_generate_keys(key_k1, key_k2);
-
-  aes_encrypt(block_b, NWKSKEY);
-
-  // copy block_b to old_data
-  for (i=0; i<16; i++) {
-    old_data[i] = block_b[i];
-  }
-
-  // perform full calculating until n-1 messsage blocks
-  while (block_counter < number_of_blocks) {
-    // copy data into array
-    for (i=0; i<16; i++) {
-      new_data[i] = *data;
-      data++;
-    }
-
-    // perform xor with old data
-    // data ^ encrypt(block_b)
-    aes_xor(new_data, old_data);
-
-    // perform aes encryption
-    // encrypt(data ^ encrypt(block_b))
-    aes_encrypt(new_data, NWKSKEY);
-
-    // copy new_data to old_data
-    for (i=0; i<16; i++) {
-      old_data[i] = new_data[i];
-    }
-
-    block_counter++;
-  }
-
-  // perform calculation on last block
-  // check if datalength is a multiple of 16
-  if (incomplete_block_size == 0) {
-    // copy last data into array
-    for (i=0; i<16; i++) {
-      new_data[i] = *data;
-      data++;
-    }
-
-    // perform xor with key 1
-    aes_xor(new_data, key_k1);
-
-    // perform xor with old data
-    aes_xor(new_data, old_data);
-
-    // perform last aes routine
-    // read NWKSKEY from PROGMEM
-    aes_encrypt(new_data, NWKSKEY);
-  } else {
-    // copy the remaining data and fill the rest
-    for (i=0; i<16; i++) {
-      if (i < incomplete_block_size) {
-        new_data[i] = *data;
-        data++;
-      }
-      if (i == incomplete_block_size) {
-        new_data[i] = 0x80;
-      }
-      if (i > incomplete_block_size) {
-        new_data[i] = 0x00;
-      }
-    }
-
-    // perform xor with key 2
-    aes_xor(new_data, key_k2);
-
-    // perform xor with old data
-    aes_xor(new_data, old_data);
-
-    // perform last aes routine
-    aes_encrypt(new_data, NWKSKEY);
-  }
-
-  final_mic[0] = new_data[0];
-  final_mic[1] = new_data[1];
-  final_mic[2] = new_data[2];
-  final_mic[3] = new_data[3];
-}
-
-void aes_generate_keys(uint8_t *k1, uint8_t *k2) {
-  uint8_t msb_key;
-
-  // encrypt the zeros in k1 with the NWKSKEY
-  aes_encrypt(k1, NWKSKEY);
-
-  // create k1
-  // check if msb is 1
-  if ((k1[0] & 0x80) == 0x80) {
-    msb_key = 1;
-  } else {
-    msb_key = 0;
-  }
-
-  aes_shift_left(k1);
-
-  if (msb_key == 1) {
-    k1[15] = k1[15] ^ 0x87;
-  }
-
-  // copy k1 to k2
-  for (uint8_t i = 0; i < 16; i++) {
-    k2[i] = k1[i];
-  }
-
-  // check if msb is 1
-  if ((k2[0] & 0x80) == 0x80) {
-    msb_key = 1;
-  } else {
-    msb_key = 0;
-  }
-
-  aes_shift_left(k2);
-
-  // check if msb was 1
-  if (msb_key == 1) {
-    k2[15] = k2[15] ^ 0x87;
-  }
-}
-
-void aes_shift_left(uint8_t *data) {
-  uint8_t i;
-  uint8_t overflow = 0;
-
-  for (i=0; i<16; i++) {
-    // check for overflow on next byte except for the last byte
-    if (i < 15) {
-      // check if upper bit is one
-      if ((data[i+1] & 0x80) == 0x80) {
-        overflow = 1;
-      } else {
-        overflow = 0;
-      }
-    } else {
-      overflow = 0;
-    }
-
-    // shift one left
-    data[i] = (data[i] << 1) + overflow;
-  }
-}
-
-void aes_xor(uint8_t *new_data, uint8_t *old_data) {
-  for (uint8_t i = 0; i < 16; i++) {
-    new_data[i] = new_data[i] ^ old_data[i];
-  }
-}
-
-void aes_encrypt(uint8_t *data, uint8_t *key) {
-  uint8_t number_of_rounds = 10;
-  uint8_t round_key[16];
-  uint8_t state[4][4];
-
-  //  copy input to state array
-  for (uint8_t column=0; column<4; column++) {
-    for (uint8_t row=0; row<4; row++) {
-      state[row][column] = data[row + (column << 2)];
-    }
-  }
-
-  // copy key to round key
-  memcpy(&round_key[0], &key[0], 16);
-
-  aes_add_round_key(round_key, state);
-
-  // perform 9 full rounds with mixed columns
-  for (uint8_t round=1; round<number_of_rounds; round++ ) {
-    // perform byte substitution with S table
-    for (uint8_t column=0 ; column<4 ; column++) {
-      for (uint8_t row=0 ; row<4; row++) {
-        state[row][column] = aes_sub_byte( state[row][column] );
-      }
-    }
-
-    aes_shift_rows(state);
-    aes_mix_columns(state);
-    aes_calculate_round_key(round, round_key);
-    aes_add_round_key(round_key, state);
-  }
-
-  // perform byte substitution with S table whitout mix columns
-  for (uint8_t column=0; column<4; column++) {
-    for (uint8_t row=0; row<4; row++ ) {
-      state[row][column] = aes_sub_byte(state[row][column]);
-    }
-  }
-
-  aes_shift_rows(state);
-  aes_calculate_round_key(number_of_rounds, round_key);
-  aes_add_round_key(round_key, state);
-
-  // copy the state into the data array
-  for (uint8_t column=0; column<4; column++ ) {
-    for (uint8_t row=0; row<4; row++ ) {
-      data[row + (column << 2)] = state[row][column];
-    }
-  }
-}
-
-void aes_add_round_key(uint8_t *round_key, uint8_t (*state)[4]) {
-  for (uint8_t col=0; col<4; col++) {
-    for (uint8_t row=0; row<4; row++) {
-      state[row][col] ^= round_key[row + (col << 2)];
-    }
-  }
-}
-
-uint8_t aes_sub_byte(uint8_t byte) {
-//  uint8_t S_Row,S_Collum;
-//  uint8_t S_Byte;
-//
-//  S_Row    = ((byte >> 4) & 0x0F);
-//  S_Collum = ((byte >> 0) & 0x0F);
-//  S_Byte   = S_TABLE [S_Row][S_Collum];
-
-  //return S_TABLE [ ((byte >> 4) & 0x0F) ] [ ((byte >> 0) & 0x0F) ]; // original
-  return pgm_read_byte(&(S_TABLE [((byte >> 4) & 0x0F)] [((byte >> 0) & 0x0F)]));
-}
-
-void aes_shift_rows(uint8_t (*state)[4]) {
-  uint8_t buffer;
-
-  // store 1st byte in buffer
-  buffer      = state[1][0];
-  // shift all bytes
-  state[1][0] = state[1][1];
-  state[1][1] = state[1][2];
-  state[1][2] = state[1][3];
-  state[1][3] = buffer;
-
-  buffer      = state[2][0];
-  state[2][0] = state[2][2];
-  state[2][2] = buffer;
-  buffer      = state[2][1];
-  state[2][1] = state[2][3];
-  state[2][3] = buffer;
-
-  buffer      = state[3][3];
-  state[3][3] = state[3][2];
-  state[3][2] = state[3][1];
-  state[3][1] = state[3][0];
-  state[3][0] = buffer;
-}
-
-void aes_mix_columns(uint8_t (*state)[4]) {
-  uint8_t col;
-  uint8_t a[4], b[4];
-
-
-  for(col=0; col<4; col++) {
-    for (uint8_t row=0; row<4; row++) {
-      a[row] =  state[row][col];
-      b[row] = (state[row][col] << 1);
-
-      if ((state[row][col] & 0x80) == 0x80) {
-        b[row] ^= 0x1B;
-      }
-    }
-
-    state[0][col] = b[0] ^ a[1] ^ b[1] ^ a[2] ^ a[3];
-    state[1][col] = a[0] ^ b[1] ^ a[2] ^ b[2] ^ a[3];
-    state[2][col] = a[0] ^ a[1] ^ b[2] ^ a[3] ^ b[3];
-    state[3][col] = a[0] ^ b[0] ^ a[1] ^ a[2] ^ b[3];
-  }
-}
-
-void aes_calculate_round_key(uint8_t round, uint8_t *round_key) {
-  uint8_t b, rcon;
-  uint8_t temp[4];
-
-
-    //Calculate rcon
-  rcon = 0x01;
-  while(round != 1) {
-    b = rcon & 0x80;
-    rcon = rcon << 1;
-
-    if (b == 0x80) {
-      rcon ^= 0x1b;
-    }
-    round--;
-  }
-
-  // calculate first temp
-  // copy laste byte from previous key and subsitute the byte, but shift the array contents around by 1.
-    temp[0] = aes_sub_byte(round_key[12 + 1]);
-    temp[1] = aes_sub_byte(round_key[12 + 2]);
-    temp[2] = aes_sub_byte(round_key[12 + 3]);
-    temp[3] = aes_sub_byte(round_key[12 + 0]);
-
-  // xor with rcon
-  temp[0] ^= rcon;
-
-  // calculate new key
-  for (uint8_t i=0; i<4; i++) {
-    for (uint8_t j=0; j<4; j++) {
-      round_key[j + (i << 2)]  ^= temp[j];
-      temp[j]                   = round_key[j + (i << 2)];
-    }
-  }
+void rfm95_set_mode(uint8_t mode) {
+  rfm95_write_reg(0x01, 0x80 | mode);
 }
 
 /*
@@ -774,4 +294,103 @@ void rfm95_setpower(int8_t power) {
   // RegPAConfig MSB = 1 to choose PA_BOOST
   //
   rfm95_write_reg(0x09, 0x80 | (power-5));
+}
+
+void rfm95_set_datarate(uint8_t rate) {
+  switch(rate) {
+    case 12: // SF12 BW 125 kHz
+      rfm95_write_reg(0x1E, 0xC4); // SF12 CRC On
+      rfm95_write_reg(0x1D, 0x72); // 125 kHz 4/5 coding rate explicit header mode
+      rfm95_write_reg(0x26, 0x0C); // Low datarate optimization on AGC auto on
+      break;
+    case 11: // SF11 BW 125 kHz
+      rfm95_write_reg(0x1E, 0xB4); // SF11 CRC On
+      rfm95_write_reg(0x1D, 0x72); // 125 kHz 4/5 coding rate explicit header mode
+      rfm95_write_reg(0x26, 0x0C); // Low datarate optimization on AGC auto on
+      break;
+    case 10: // SF10 BW 125 kHz
+      rfm95_write_reg(0x1E, 0xA4); // SF10 CRC On
+      rfm95_write_reg(0x1D, 0x72); // 125 kHz 4/5 coding rate explicit header mode
+      rfm95_write_reg(0x26, 0x04); // Low datarate optimization off AGC auto on
+      break;
+    case 9: // SF9 BW 125 kHz
+      rfm95_write_reg(0x1E, 0x94); // SF9 CRC On
+      rfm95_write_reg(0x1D, 0x72); // 125 kHz 4/5 coding rate explicit header mode
+      rfm95_write_reg(0x26, 0x04); // Low datarate optimization off AGC auto on
+    break;
+    case 8: // SF8 BW 125 kHz
+      rfm95_write_reg(0x1E, 0x84); // SF8 CRC On
+      rfm95_write_reg(0x1D, 0x72); // 125 kHz 4/5 coding rate explicit header mode
+      rfm95_write_reg(0x26, 0x04); // Low datarate optimization off AGC auto on
+    break;
+    case 71: // SF7 BW 125 kHz
+      rfm95_write_reg(0x1E, 0x74); // SF7 CRC On
+      rfm95_write_reg(0x1D, 0x72); // 125 kHz 4/5 coding rate explicit header mode
+      rfm95_write_reg(0x26, 0x04); // Low datarate optimization off AGC auto on
+    break;
+    case 72: // SF7 BW 250kHz
+      rfm95_write_reg(0x1E, 0x74); // SF7 CRC On
+      rfm95_write_reg(0x1D, 0x82); // 250 kHz 4/5 coding rate explicit header mode
+      rfm95_write_reg(0x26, 0x04); // Low datarate optimization off AGC auto on
+    break;
+  }
+}
+
+void rfm95_set_channel(uint8_t channel) {
+  switch(channel) {
+    case 0: // channel 0: 868.100 MHz / 61.035 Hz = 14222987 = 0xD9068B
+      rfm95_write_reg(0x06, 0xD9);
+      rfm95_write_reg(0x07, 0x06);
+      rfm95_write_reg(0x08, 0x8B);
+      break;
+
+    case 1: // channel 1: 868.300 MHz / 61.035 Hz = 14226264 = 0xD91358
+      rfm95_write_reg(0x06,0xD9);
+      rfm95_write_reg(0x07,0x13);
+      rfm95_write_reg(0x08,0x58);
+      break;
+
+    case 2: // channel 2 868.500 MHz / 61.035 Hz = 14229540 = 0xD92024
+      rfm95_write_reg(0x06,0xD9);
+      rfm95_write_reg(0x07,0x20);
+      rfm95_write_reg(0x08,0x24);
+      break;
+
+    case 3: // channel 3 867.100 MHz / 61.035 Hz = 14206603 = 0xD8C68B
+      rfm95_write_reg(0x06,0xD8);
+      rfm95_write_reg(0x07,0xC6);
+      rfm95_write_reg(0x08,0x8B);
+      break;
+
+    case 4: // channel 4 867.300 MHz / 61.035 Hz = 14209880 = 0xD8D358
+      rfm95_write_reg(0x06,0xD8);
+      rfm95_write_reg(0x07,0xD3);
+      rfm95_write_reg(0x08,0x58);
+      break;
+
+    case 5: // channel 5 867.500 MHz / 61.035 Hz = 14213156 = 0xD8E024
+      rfm95_write_reg(0x06,0xD8);
+      rfm95_write_reg(0x07,0xE0);
+      rfm95_write_reg(0x08,0x24);
+      break;
+
+    case 6: // channel 6 867.700 MHz / 61.035 Hz = 14216433 = 0xD8ECF1
+      rfm95_write_reg(0x06,0xD8);
+      rfm95_write_reg(0x07,0xEC);
+      rfm95_write_reg(0x08,0xF1);
+      break;
+
+    case 7: // channel 7 867.900 MHz / 61.035 Hz = 14219710 = 0xD8F9BE
+      rfm95_write_reg(0x06,0xD8);
+      rfm95_write_reg(0x07,0xF9);
+      rfm95_write_reg(0x08,0xBE);
+      break;
+    case 99: // downlink channel 869.525 MHz / 61.035 Hz = 14246334 = 0xD961BE
+      // set downlink carrier frq
+      // https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
+      rfm95_write_reg(0x06, 0xD9);
+      rfm95_write_reg(0x07, 0x61);
+      rfm95_write_reg(0x08, 0xBE);
+      break;
+  }
 }
