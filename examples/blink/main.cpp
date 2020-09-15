@@ -10,7 +10,7 @@ int main(void) {
   // _PROTECTED_WRITE(CLKCTRL.MCLKCTRLA, CLKCTRL_CLKOUT_bm); // output clk to PB5
 
   DINIT();
-  DF("Hello from 0x%06lX", get_deviceid());
+  DF("\n\033[1;38;5;226;48;5;18mHello from 0x%06lX\033[0m\n", get_deviceid());
 
   led_flash(&led_g, 3);
   led_on(&led_g);
