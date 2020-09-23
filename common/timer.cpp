@@ -44,6 +44,7 @@ void TIMER::start(uint16_t ms) {
     _last_round_ticks = _last_round_ticks - _rounds*65535;
   }
 
+  TCA0.SINGLE.CNT = 0;                                                     // ensure counter is 0 when starting
   TCA0.SINGLE.PER = _rounds ? 0xFFFF : _last_round_ticks;                  // 10MHz/1024/19532 = 0.5Hz (max 16bit)
   TCA0.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV1024_gc | TCA_SINGLE_ENABLE_bm; // prescaler 1024
   sei();
