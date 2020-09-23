@@ -15,6 +15,8 @@ class TIMER {
     uint8_t timed_out();
     static TIMER* timer_pointer;
     volatile uint8_t _timeout = 0;
+    volatile uint8_t _rounds;
+    uint32_t _last_round_ticks;
 
   private:
     void init();
