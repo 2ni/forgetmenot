@@ -39,7 +39,6 @@ void aes128_cmac(uint8_t *key, uint8_t *msg, uint8_t len, uint8_t *cmac) {
 
   aes128_generate_subkeys(key, k1, k2);
 
-  // eg len 45 -> number_of_blocks=2, last_block_size=13
   uint8_t number_of_blocks = len / 16; // number of blocks-1 (used for iteration)
   uint8_t last_block_size = len % 16;
 

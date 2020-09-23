@@ -32,6 +32,11 @@
   #define DT_S(key, value)   uart_tuple(PSTR(key), value)
   #define DT_I(key, value)   uart_tuple(PSTR(key), value)
   #define DT_IH(key, value)  uart_tuple(PSTR(key), value, 16)
+  // https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences
+  // https://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
+  #define NOK(str)           "\033[31;1m" str "\033[0m"  // output in red
+  #define OK(str)            "\033[32;1m" str "\033[0m"  // output in green
+  #define WARN(str)          "\033[33;1m" str "\033[0m"  // output in yellow
 #else
   #define DINIT()
   #define D(str)

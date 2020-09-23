@@ -14,6 +14,7 @@ pin_t led_b              = { .port = &PORTB, .pin = 5 }; // PB5
 
 pin_t rfm_cs             = { .port = &PORTA, .pin = 4 }; // PA4
 pin_t rfm_interrupt      = { .port = &PORTA, .pin = 5 }; // PA5
+pin_t rfm_timeout        = { .port = &PORTA, .pin = 6 }; // PA6
 
 pin_t multi              = { .port = &PORTC, .pin = 4, .port_adc = &ADC1, .pin_adc = 10 }; // PC4
 
