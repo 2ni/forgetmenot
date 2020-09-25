@@ -17,11 +17,12 @@ uint16_t calculate_airtime(uint8_t len);
 
 int main() {
   uint8_t len;
-  printf("length of total package:");
-  scanf("%hhu", &len); // hhu = uint8_t, hu=uint16_t
-  printf("len: %u\n", len);
-  // uint8_t len = 33; // header: 13, payload join accept: 20
-  calculate_airtime(len);
+  while (1) {
+    printf("length of total package:");
+    scanf("%hhu", &len); // hhu = uint8_t, hu=uint16_t
+    // uint8_t len = 33; // header: 13, payload join accept: 20
+    calculate_airtime(len);
+  }
 }
 
 /*
