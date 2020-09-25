@@ -38,14 +38,14 @@ uint16_t calculate_airtime(uint8_t len) {
 
   for (uint8_t datarate=7; datarate<=12; datarate++) {
     de = datarate > 10 ? 1:0;
-    uint32_t tsym = (128<<datarate)/bandwith;                                            // *128 for better precision
-    uint32_t tpreamble = (preamble*128+4.25*128)*tsym/128;                               // *128 for better precision
-    int temp = (16*8*len-4*datarate+28-16-20*(1-explicit_header)) / (4*(datarate-2*de)); // *16 for better precision
+    uint32_t tsym = (128<<datarate)/bandwith;                                                // *128 for better precision
+    uint32_t tpreamble = (preamble*128+4.25*128)*tsym/128;                                   // *128 for better precision
+    int32_t temp = (16*8*len-4*datarate+28-16-20*(1-explicit_header)) / (4*(datarate-2*de)); // *16 for better precision
     if (temp<0) temp = 0;
-    uint8_t symbnb = 8+(temp+16)/16*coding_rate;                                         // +16/16 for ceiling()
+    uint8_t symbnb = 8+(temp+16)/16*coding_rate;                                             // +16/16 for ceiling()
 
     uint32_t tpayload = symbnb*tsym;
-    uint16_t tpacket = (tpreamble+tpayload)/128;                                         // /128 for better precision
+    uint16_t tpacket = (tpreamble+tpayload)/128;                                             // /128 for better precision
 
     printf("SF%u: %ums\n", datarate, tpacket);
   }
