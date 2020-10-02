@@ -1,4 +1,4 @@
-#ifndef __CMAC_H_
+#ifndef __CMAC_H__
 #define __CMAC_H__
 
 #include <avr/io.h>
