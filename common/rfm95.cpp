@@ -2,6 +2,22 @@
  * inspired by https://www.thethingsnetwork.org/forum/t/attiny85-rfm95-temperature-sensor/11211
  *
  * see lorawan spec https://lora-alliance.org/resource-hub/lorawanr-specification-v103
+ *
+ * https://cdn.hackaday.io/files/286681226531712/RH_RF95.cpp
+ * ??? TODO remember last SNR:
+ * lastSNR = (int8_t)rfm95_read_reg(0x1a) / 4
+ *
+ * ??? TODO remember last RSSI
+ * lastRssi = rfm95_read_reg(0x1a);
+ *  // Adjust the RSSI, datasheet page 87
+ *  if (lastSNR < 0)
+ *      lastRssi = lastRssi + lastSNR;
+ *  else
+ *      lastRssi = (int)lastRssi * 16 / 15;
+ *  if (_usingHFport)
+ *      _lastRssi -= 157;
+ *  else
+ *      _lastRssi -= 164;
  */
 
 #include <avr/delay.h>
@@ -39,14 +55,13 @@ uint8_t rfm95_init() {
   _delay_ms(10);
 
   // set carrier frequency
-  // 868.100 MHz / 61.035 Hz = 14222987 = 0xD9068B
   rfm95_set_channel(0);
 
   // SW12, 125kHz
   rfm95_set_datarate(12);
 
   // PA minimal power 17dbm
-  rfm95_setpower(12);
+  rfm95_setpower(9);
   // rfm95_write_reg(0x09, 0xF0);
 
   // rx timeout set to 37 symbols
@@ -71,7 +86,7 @@ uint8_t rfm95_init() {
   rfm95_write_reg(0x0F, 0x00);
 
   // switch rfm to sleep
-  rfm95_write_reg(0x01, 0x00);
+  rfm95_write_reg(0x01, 0x80);
 
   return version;
 }
@@ -118,7 +133,7 @@ void rfm95_receive_continuous(uint8_t channel, uint8_t datarate) {
   rfm95_write_reg(0x33, 0x67);
   rfm95_write_reg(0x3B, 0x19);
 
-  rfm95_write_reg(0x01, 0x81);
+  rfm95_write_reg(0x01, 0x81); // standby mode
   // _delay_ms(10);
 
   // set downlink carrier frq
@@ -129,6 +144,7 @@ void rfm95_receive_continuous(uint8_t channel, uint8_t datarate) {
   rfm95_write_reg(0x24, 0x00);
 
   rfm95_write_reg(0x01, 0x85); // continuous rx
+  DF("listening on ch%u SF%u\n", channel, datarate);
 }
 
 /*
@@ -138,8 +154,10 @@ void rfm95_receive_continuous(uint8_t channel, uint8_t datarate) {
  * rx1 with same channel, datarate as tx
  * rx2 with 869.525, SF9
  *
+ * 0: no errors (no timeout)
+ * 1: timeout
  */
-uint8_t rfm95_waif_for_single_package() {
+uint8_t rfm95_wait_for_single_package(uint8_t channel, uint8_t datarate) {
   rfm95_write_reg(0x40, 0x00); // DIO0 -> rxdone
 
   //invert iq back
@@ -147,8 +165,8 @@ uint8_t rfm95_waif_for_single_package() {
   rfm95_write_reg(0x3B, 0x19);
 
   // set downlink carrier frq
-  rfm95_set_channel(99); // 868.525MHz
-  rfm95_set_datarate(9); // SF9, 125kHz
+  rfm95_set_channel(channel);
+  rfm95_set_datarate(datarate);
 
   rfm95_write_reg(0x01, 0x86); // single rx
 
@@ -157,11 +175,11 @@ uint8_t rfm95_waif_for_single_package() {
 
   if (get_output(&rfm_timeout) == 1) {
     rfm95_write_reg(0x12, 0xE0); // clear interrupt
-    DL(NOK("timeout"));
-    return 0;
+    // DL(NOK("timeout"));
+    return 1;
   }
 
-  return 1;
+  return 0;
 }
 
 /*
@@ -233,7 +251,7 @@ void rfm95_send_package(uint8_t *package, uint8_t package_length, uint8_t channe
 
   rfm95_write_reg(0x12, 0x08); // clear interrupt
 
-  rfm95_write_reg(0x01, 0x00); // switch rfm to sleep
+  rfm95_write_reg(0x01, 0x80); // switch rfm to sleep
 
   // uart_arr(WARN("pkg sent"), package, package_length);
 }
@@ -281,22 +299,10 @@ void rfm95_setpower(int8_t power) {
 /*
  *
  * set transmitter to sleep
+ * set bit 2..0: 000
  */
 void rfm95_sleep() {
-  rfm95_write_reg(0x01, 0x00);
-}
-
-/*
- * based on
- * - https://github.com/dragino/RadioHead/blob/master/RH_RF95.cpp#L275
- *
- */
-void rfm95_setfrequ(float centre) {
-    // Frf = FRF / FSTEP
-    uint32_t frf = (centre * 1000000.0) / (32000000.0 / 524288);
-    rfm95_write_reg(0x06, (frf >> 16) & 0xff);
-    rfm95_write_reg(0x07, (frf >> 8) & 0xff);
-    rfm95_write_reg(0x08, frf & 0xff);
+  rfm95_write_reg(0x01, (rfm95_read_reg(0x01) & ~0x07) | 0x00);
 }
 
 /*
@@ -320,7 +326,7 @@ uint32_t rfm95_get_random(uint8_t bits) {
   }
 
   // set to sleep
-  rfm95_write_reg(0x01, 0x00);
+  rfm95_write_reg(0x01, 0x80);
 
   return rnd;
 }
@@ -370,61 +376,31 @@ void rfm95_set_datarate(uint8_t rate) {
   }
 }
 
+/*
+ * set frequency of transmitter
+ * in kHz to spare some 0's
+ * registers = frq*2^19/32MHz
+ *
+ * eg 868100 or 869525
+ */
+void rfm95_set_frq(uint32_t frq) {
+    uint32_t frf = (uint64_t)frq*524288/32000;
+    // DF("frf: 0x%lx\n", frf);
+    // DF("frq: %lu\n", frq);
+    rfm95_write_reg(0x06, (uint8_t)(frf>>16));
+    rfm95_write_reg(0x07, (uint8_t)(frf>>8));
+    rfm95_write_reg(0x08, (uint8_t)(frf>>0));
+}
+
+/*
+ *
+ * https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
+ * default channels 0..2: 868.1, 868.3, 868.5
+ * only changeable in sleep or standby
+ * regs = 2^19*frq/32MHz
+ *
+ */
 void rfm95_set_channel(uint8_t channel) {
-  switch(channel) {
-    case 1: // channel 0: 868.100 MHz / 61.035 Hz = 14222987 = 0xD9068B
-      rfm95_write_reg(0x06, 0xD9);
-      rfm95_write_reg(0x07, 0x06);
-      rfm95_write_reg(0x08, 0x8B);
-      break;
-
-    case 2: // channel 1: 868.300 MHz / 61.035 Hz = 14226264 = 0xD91358
-      rfm95_write_reg(0x06,0xD9);
-      rfm95_write_reg(0x07,0x13);
-      rfm95_write_reg(0x08,0x58);
-      break;
-
-    case 3: // channel 2 868.500 MHz / 61.035 Hz = 14229540 = 0xD92024
-      rfm95_write_reg(0x06,0xD9);
-      rfm95_write_reg(0x07,0x20);
-      rfm95_write_reg(0x08,0x24);
-      break;
-
-    case 4: // channel 3 867.100 MHz / 61.035 Hz = 14206603 = 0xD8C68B
-      rfm95_write_reg(0x06,0xD8);
-      rfm95_write_reg(0x07,0xC6);
-      rfm95_write_reg(0x08,0x8B);
-      break;
-
-    case 5: // channel 4 867.300 MHz / 61.035 Hz = 14209880 = 0xD8D358
-      rfm95_write_reg(0x06,0xD8);
-      rfm95_write_reg(0x07,0xD3);
-      rfm95_write_reg(0x08,0x58);
-      break;
-
-    case 6: // channel 5 867.500 MHz / 61.035 Hz = 14213156 = 0xD8E024
-      rfm95_write_reg(0x06,0xD8);
-      rfm95_write_reg(0x07,0xE0);
-      rfm95_write_reg(0x08,0x24);
-      break;
-
-    case 7: // channel 6 867.700 MHz / 61.035 Hz = 14216433 = 0xD8ECF1
-      rfm95_write_reg(0x06,0xD8);
-      rfm95_write_reg(0x07,0xEC);
-      rfm95_write_reg(0x08,0xF1);
-      break;
-
-    case 8: // channel 7 867.900 MHz / 61.035 Hz = 14219710 = 0xD8F9BE
-      rfm95_write_reg(0x06,0xD8);
-      rfm95_write_reg(0x07,0xF9);
-      rfm95_write_reg(0x08,0xBE);
-      break;
-    case 99: // downlink channel 869.525 MHz / 61.035 Hz = 14246334 = 0xD961BE
-      // set downlink carrier frq
-      // https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
-      rfm95_write_reg(0x06, 0xD9);
-      rfm95_write_reg(0x07, 0x61);
-      rfm95_write_reg(0x08, 0xBE);
-      break;
-  }
+  if (channel == 99) rfm95_set_frq(FREQUENCY_UP);
+  else rfm95_set_frq(FREQUENCIES[channel]);
 }
