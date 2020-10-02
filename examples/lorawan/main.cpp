@@ -30,6 +30,9 @@
 #include "aes.h"
 #include "lorawan_struct.h"
 #include "sleep.h"
+#include "millis.h"
+
+uint32_t m;
 
 #define OTAA // choose if you want to send a package by otaa (or abp)
 
@@ -55,6 +58,8 @@ int main(void) {
     DF("RFM95 Version: 0x%02x\n", version);
   }
 
+  millis_init();
+
   uint8_t len_msg = 20;
   uint8_t msg[len_msg] = { 0x00, 0x69, 0xDC, 0xD9, 0xEC, 0xB2, 0xE4, 0xB7, 0x70, 0xB3, 0xD5, 0x7E, 0xD0, 0x03, 0x48, 0x7D, 0x26, 0x01, 0x34, 0x11 };
   uint16_t frame_counter = 0x0003;
@@ -71,20 +76,19 @@ int main(void) {
     uart_arr("appskey", appskey, 16);
     uart_arr("nwkskey", nwkskey, 16);
     uart_arr("devaddr", devaddr, 4);
+    lorawan_send(msg, len_msg, frame_counter, appskey, nwkskey, devaddr, 2, 9);
   } else {
     DL(NOK("joining failed"));
   }
-  lorawan_send(msg, len_msg, frame_counter, appskey, nwkskey, devaddr, 4, 7); // channel 4, SF7
   DL("done");
 #else
   extern uint8_t DEVADDR[4];
   extern uint8_t NWKSKEY[16];
   extern uint8_t APPSKEY[16];
 
-  D("sending: ");
   // send package (final test)
-  lorawan_send(msg, len_msg, frame_counter, APPSKEY, NWKSKEY, DEVADDR, 4, 7); // channel 4 SF7
-  DL(OK("ok"));
+  lorawan_send(msg, len_msg, frame_counter, APPSKEY, NWKSKEY, DEVADDR, 2, 9);
+  DL("done.");
 #endif
 
   while (true) {}
