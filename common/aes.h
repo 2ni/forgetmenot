@@ -1,5 +1,5 @@
-#ifndef __CMAC_H_
-#define __CMAC_H__
+#ifndef __AES_H__
+#define __AES_H__
 
 #include <avr/io.h>
 #include <avr/pgmspace.h>
