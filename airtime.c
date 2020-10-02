@@ -6,7 +6,7 @@
  * the airtime from a packet sent by the gw needs to be added when waiting for an answer on the node
  * to get a proper rx window
  *
- * gcc airtime.c -o airtime && ./airtime
+ * gcc airtime.c -o bin/airtime && bin/airtime
  *
  */
 #include <stdio.h>

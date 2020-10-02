@@ -13,3 +13,4 @@ dummy
 pack/
 toolchain_*
 src/
+bin/
