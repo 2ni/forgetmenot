@@ -28,7 +28,7 @@
 #include "cmac.h"
 #include "lorawan.h"
 #include "aes.h"
-#include "lorawan_struct.h"
+#include "struct.h"
 #include "sleep.h"
 #include "millis.h"
 
@@ -60,9 +60,14 @@ int main(void) {
 
   millis_init();
 
-  uint8_t len_msg = 20;
-  uint8_t msg[len_msg] = { 0x00, 0x69, 0xDC, 0xD9, 0xEC, 0xB2, 0xE4, 0xB7, 0x70, 0xB3, 0xD5, 0x7E, 0xD0, 0x03, 0x48, 0x7D, 0x26, 0x01, 0x34, 0x11 };
-  uint16_t frame_counter = 0x0003;
+  uint8_t len = 3;
+  uint8_t data[len] = { 0x61, 0x62, 0x63 };
+  Packet payload = { .data=data, .len=len };
+  uint16_t counter = 0x0005;
+
+  uint8_t rx_len = 64;
+  uint8_t rx_data[rx_len] = {0};
+  Packet rx_packet = { .data=rx_data, .len=rx_len };
 
 #ifdef OTAA
   extern uint8_t DEVEUI[8];
@@ -72,11 +77,19 @@ int main(void) {
   uint8_t appskey[16] = {0};
   uint8_t nwkskey[16] = {0};
   uint8_t devaddr[4] = {0};
-  if(!lorawan_join(APPEUI, DEVEUI, APPKEY, appskey, nwkskey, devaddr)) {
-    uart_arr("appskey", appskey, 16);
-    uart_arr("nwkskey", nwkskey, 16);
-    uart_arr("devaddr", devaddr, 4);
-    lorawan_send(msg, len_msg, frame_counter, appskey, nwkskey, devaddr, 2, 9);
+  uint16_t devnonce = 0;
+
+  Lora_otaa otaa = { .deveui=DEVEUI, .appeui=APPEUI, .appkey=APPKEY, .devnonce=devnonce };
+  Lora_session session = { .nwkskey=nwkskey, .appskey=appskey, .devaddr=devaddr, .counter=counter };
+
+  if (lorawan_join(&otaa, &session) == OK) {
+    uart_arr("appskey", session.appskey, 16);
+    uart_arr("nwkskey", session.nwkskey, 16);
+    uart_arr("devaddr", session.devaddr, 4);
+    session.counter = 0;
+    if (lorawan_send(&payload, &session, 2, 9, &rx_packet) == OK) {
+      uart_arr("received message", rx_packet.data, rx_packet.len);
+    }
   } else {
     DL(NOK("joining failed"));
   }
@@ -86,8 +99,12 @@ int main(void) {
   extern uint8_t NWKSKEY[16];
   extern uint8_t APPSKEY[16];
 
+  Lora_session session = { .nwkskey=NWKSKEY, .appskey=APPSKEY, .devaddr=DEVADDR, .counter=counter };
+
   // send package (final test)
-  lorawan_send(msg, len_msg, frame_counter, APPSKEY, NWKSKEY, DEVADDR, 2, 9);
+  if (lorawan_send(&payload, &session, 2, 9, &rx_packet) == OK) {
+    uart_arr("received message", rx_packet.data, rx_packet.len);
+  }
   DL("done.");
 #endif
 

@@ -23,7 +23,7 @@ static const uint8_t PROGMEM AES_BOX[16][16] = {
   {0x8C,0xA1,0x89,0x0D,0xBF,0xE6,0x42,0x68,0x41,0x99,0x2D,0x0F,0xB0,0x54,0xBB,0x16}
 };
 
-void aes128_encrypt(uint8_t *key, uint8_t *data);
+void aes128_encrypt(const uint8_t *key, uint8_t *data);
 void aes128_add_round_key(uint8_t *round_key, uint8_t (*state)[4]);
 uint8_t aes128_sub_byte(uint8_t byte);
 void aes128_shift_rows(uint8_t (*state)[4]);

@@ -2,9 +2,10 @@
 #define __CMAC_H__
 
 #include <avr/io.h>
+#include "struct.h"
 
-void aes128_prepend_b0(uint8_t *msg, uint8_t len, uint16_t counter, uint8_t direction, uint8_t *dev_addr, uint8_t *msg_with_block);
-void aes128_generate_subkeys(uint8_t *key, uint8_t *key1, uint8_t *key2);
-void aes128_cmac(uint8_t *key, uint8_t *msg, uint8_t len, uint8_t *mic);
+void aes128_b0(const Packet *packet, uint16_t const counter, const uint8_t direction, const uint8_t *dev_addr, Packet *b0);
+void aes128_generate_subkeys(const uint8_t *key, uint8_t *key1, uint8_t *key2);
+void aes128_mic(const uint8_t *key, const Packet *packet, Packet *mic);
 
 #endif

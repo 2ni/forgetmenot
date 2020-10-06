@@ -61,7 +61,7 @@ uint8_t rfm95_init() {
   rfm95_set_datarate(12);
 
   // PA minimal power 17dbm
-  rfm95_setpower(9);
+  rfm95_setpower(13);
   // rfm95_write_reg(0x09, 0xF0);
 
   // rx timeout set to 37 symbols
@@ -157,7 +157,7 @@ void rfm95_receive_continuous(uint8_t channel, uint8_t datarate) {
  * 0: no errors (no timeout)
  * 1: timeout
  */
-uint8_t rfm95_wait_for_single_package(uint8_t channel, uint8_t datarate) {
+Status rfm95_wait_for_single_package(uint8_t channel, uint8_t datarate) {
   rfm95_write_reg(0x40, 0x00); // DIO0 -> rxdone
 
   //invert iq back
@@ -176,38 +176,38 @@ uint8_t rfm95_wait_for_single_package(uint8_t channel, uint8_t datarate) {
   if (get_output(&rfm_timeout) == 1) {
     rfm95_write_reg(0x12, 0xE0); // clear interrupt
     // DL(NOK("timeout"));
-    return 1;
+    return TIMEOUT;
   }
+  // DL(OK("packet!"));
 
-  return 0;
+  return OK;
 }
 
 /*
  * get PHYPayload
- * return
+ * return error code
  * 0: no error
  * 1: crc error
  */
-uint8_t rfm95_read_package(uint8_t *package, uint8_t *size) {
+Status rfm95_read(Packet *packet) {
   uint8_t interrupts = rfm95_read_reg(0x12);
-  uint8_t crc_error = 0;
+  Status status = OK;
 
   if ((interrupts & 0x20)) {
-    crc_error = 1; // PayloadCrcError set, we've got an error
+    status = ERROR; // PayloadCrcError set, we've got an error
   }
 
   // read rfm package
   uint8_t start_pos = rfm95_read_reg(0x10);
-  uint8_t len = rfm95_read_reg(0x13);
-  *size = len;
+  packet->len = rfm95_read_reg(0x13);
   rfm95_write_reg(0x0D, start_pos);
-  for (uint8_t i=0; i<len; i++) {
-    package[i] = rfm95_read_reg(0x00);
+  for (uint8_t i=0; i<packet->len; i++) {
+    packet->data[i] = rfm95_read_reg(0x00);
   }
 
   rfm95_write_reg(0x12, 0xE0); // clear interrupt register
 
-  return crc_error;
+  return status;
 }
 
 /*
@@ -217,7 +217,7 @@ uint8_t rfm95_read_package(uint8_t *package, uint8_t *size) {
  * just take a byte from the encrypted payload (or a byte from the MIC)
  * and mask-out the 3 least significant bits as a pointer to the channel
  */
-void rfm95_send_package(uint8_t *package, uint8_t package_length, uint8_t channel, uint8_t datarate) {
+void rfm95_send(const Packet *packet, const uint8_t channel, const uint8_t datarate) {
   // set rfm in standby mode and lora mode
   rfm95_write_reg(0x01, 0x81);
 
@@ -234,15 +234,15 @@ void rfm95_send_package(uint8_t *package, uint8_t package_length, uint8_t channe
   rfm95_write_reg(0x33, 0x27);
   rfm95_write_reg(0x3B, 0x1D);
 
-  rfm95_write_reg(0x22, package_length); // set length
+  rfm95_write_reg(0x22, packet->len); // set length
 
   uint8_t tx_pos = rfm95_read_reg(0x0E);
   rfm95_write_reg(0x0D, tx_pos);
   // rfm95_write_reg(0x0D, 0x80); // hardcoded fifo location according RFM95 specs
 
   // write payload to fifo
-  for (uint8_t i = 0; i<package_length; i++) {
-    rfm95_write_reg(0x00, package[i]);
+  for (uint8_t i = 0; i<packet->len; i++) {
+    rfm95_write_reg(0x00, packet->data[i]);
   }
 
   rfm95_write_reg(0x01, 0x83); // switch rfm to tx
@@ -253,7 +253,7 @@ void rfm95_send_package(uint8_t *package, uint8_t package_length, uint8_t channe
 
   rfm95_write_reg(0x01, 0x80); // switch rfm to sleep
 
-  // uart_arr(WARN("pkg sent"), package, package_length);
+  // uart_arr(WARN("pkg sent"), packet->data, packet->len);
 }
 
 /*

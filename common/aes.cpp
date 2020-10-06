@@ -4,9 +4,10 @@
 #include "aes.h"
 
 /*
- * encrypted data is called cipher
+ * input: key
+ * input/output: data
  */
-void aes128_encrypt(uint8_t *key, uint8_t *data) {
+void aes128_encrypt(const uint8_t *key, uint8_t *data) {
   uint8_t number_of_rounds = 10;
   uint8_t round_key[16];
   uint8_t state[4][4];

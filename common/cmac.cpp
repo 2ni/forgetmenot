@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <string.h>
+#include "struct.h"
 #include "cmac.h"
 #include "uart.h"
 #include "aes.h"
@@ -11,19 +12,18 @@
  * to calculate mic for a message
  * cmac = aes128_cmac(NwkSKey, B_0 | msg)
  *
- * msg_wit_block is 16bytes longer
+ * b0 is 16bytes longer
  */
-void aes128_prepend_b0(uint8_t *msg, uint8_t len, uint16_t counter, uint8_t direction, uint8_t *dev_addr, uint8_t *msg_with_block) {
-  memset(msg_with_block, 0, 16);
-  msg_with_block[0] = 0x49;
-  msg_with_block[5] = direction;
-  for (uint8_t i=0; i<4; i++) msg_with_block[6+i] = dev_addr[3-i];
-  msg_with_block[10] = (counter & 0x00ff);
-  msg_with_block[11] = ((counter >> 8) & 0x00ff);
-  msg_with_block[15] = len;
+void aes128_b0(const Packet *packet, const uint16_t counter, const uint8_t direction, const uint8_t *dev_addr, Packet *b0) {
+  b0->data[0] = 0x49;
+  b0->data[5] = direction;
+  for (uint8_t i=0; i<4; i++) b0->data[6+i] = dev_addr[3-i];
+  b0->data[10] = (counter & 0x00ff);
+  b0->data[11] = ((counter >> 8) & 0x00ff);
+  b0->data[15] = packet->len; // PHYPayload
 
-  for (uint8_t i=0; i<len; i++) {
-    msg_with_block[16+i] = msg[i];
+  for (uint8_t i=0; i<packet->len; i++) {
+    b0->data[16+i] = packet->data[i];
   }
 }
 
@@ -33,20 +33,20 @@ void aes128_prepend_b0(uint8_t *msg, uint8_t len, uint16_t counter, uint8_t dire
  *
  * mic are 4 msb bytes from cmac
  */
-void aes128_cmac(uint8_t *key, uint8_t *msg, uint8_t len, uint8_t *cmac) {
+void aes128_mic(const uint8_t *key, const Packet *packet, Packet *mic) {
   uint8_t k1[16] = {0};
   uint8_t k2[16] = {0};
 
   aes128_generate_subkeys(key, k1, k2);
 
-  uint8_t number_of_blocks = len / 16; // number of blocks-1 (used for iteration)
-  uint8_t last_block_size = len % 16;
+  uint8_t number_of_blocks = packet->len / 16; // number of blocks-1 (used for iteration)
+  uint8_t last_block_size = packet->len % 16;
 
   uint8_t data[16] = {0};
   uint8_t current_block[16] = {0};
   for (uint8_t block_count=0; block_count<number_of_blocks; block_count++) {
-    // for (uint8_t i=0; i<16; i++) current_block[i] = msg[16*block_count+i]; // get next block
-    aes128_copy_array(current_block, msg, 16, 16*block_count); // get next block
+    // for (uint8_t i=0; i<16; i++) current_block[i] = packet->data[16*block_count+i]; // get next block
+    aes128_copy_array(current_block, packet->data, 16, 16*block_count); // get next block
     // y = x ^ M_i; (y is like a tmp variable)
     // x = aes(K, y);
     aes128_xor(current_block, data);
@@ -55,7 +55,7 @@ void aes128_cmac(uint8_t *key, uint8_t *msg, uint8_t len, uint8_t *cmac) {
   }
 
   // handle last block
-  aes128_copy_array(current_block, msg, last_block_size, 16*number_of_blocks); // copy remaining values from msg
+  aes128_copy_array(current_block, packet->data, last_block_size, 16*number_of_blocks); // copy remaining values from packet
 
   if (last_block_size == 0) { // last block is complete
     aes128_xor(current_block, k1);
@@ -72,12 +72,12 @@ void aes128_cmac(uint8_t *key, uint8_t *msg, uint8_t len, uint8_t *cmac) {
   aes128_encrypt(key, current_block);
   // aes128_copy_array(data, current_block); // copy processed block to data
 
-  for (uint8_t i=0; i<16; i++) {
-    cmac[i] = current_block[i];
+  for (uint8_t i=0; i<mic->len; i++) {
+    mic->data[i] = current_block[i];
   }
 }
 
-void aes128_generate_subkeys(uint8_t *key, uint8_t *key1, uint8_t *key2) {
+void aes128_generate_subkeys(const uint8_t *key, uint8_t *key1, uint8_t *key2) {
   aes128_encrypt(key, key1);
   uint8_t msb = (key1[0] & 0x80) ? 1:0;
 
