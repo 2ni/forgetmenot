@@ -1,6 +1,3 @@
-#ifndef __MOTOR_H_
-#define __MOTOR_H__
-
 #include <avr/io.h>
 #include "motor.h"
 #include "pins.h"
@@ -31,5 +28,3 @@ void motor_off() {
   set_output(&out1, 0);
   set_output(&out2, 0);
 }
-
-#endif
