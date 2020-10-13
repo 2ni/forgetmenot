@@ -6,6 +6,8 @@
 
 #include "test.h"
 #include "struct.h"
+#include "aes.h"
+#include "tests_pgmspace.h"
 
 Test_Result tests_pgmspace() {
   printf("%s\n", __func__);

@@ -7,8 +7,8 @@
 #include "test.h"
 #include "struct.h"
 
-#include "tests_lora.cpp"
-#include "tests_pgmspace.cpp"
+#include "tests_lora.h"
+#include "tests_pgmspace.h"
 
 uint32_t m; // time counter used in lorawan.cpp
 

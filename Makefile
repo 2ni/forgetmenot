@@ -8,7 +8,7 @@
 # export PATH=/www/forgetmenot/toolchain/bin:$PATH
 #
 # run "make FLAGS=" to not run in debug mode
-.PHONY: all clean
+.PHONY: all clean tests
 
 PRJ        = main
 DEVICE     = attiny3217
@@ -72,7 +72,7 @@ DEPENDS   := $(CFILES:.c=.d) $(EXTC:.c=.d) $(CPPFILES:.cpp=.cpp.d) $(EXTCPP:.cpp
 
 # user target
 # compile all files
-all: 	$(PRJ).hex
+all: 	$(PRJ).hex tests
 
 clean:
 	rm -f *.hex *.elf
@@ -115,7 +115,7 @@ ports:
 	@if [ ! -z $(PORT_DBG) ]; then echo "DBG: $(PORT_DBG)"; fi
 
 # check programmer connectivity
-test:
+check:
 	@$(PYUPDI) -iv
 
 # read out fuses
@@ -142,6 +142,9 @@ disasm: $(PRJ).elf
 	$(OBJDUMP) -S $(PRJ).elf > $(PRJ).asm
 	$(OBJDUMP) -t $(PRJ).elf > $(PRJ).sym
 	$(OBJDUMP) -t $(PRJ).elf |grep 00 |sort  > $(PRJ)-sorted.sym
+
+tests:
+	@$(MAKE) -C tests
 
 patch_toolchain_microchip:
 	sed -i.bak 's/0x802000/__DATA_REGION_ORIGIN__/' $(find toolchain_microchip/ -type f -name 'avrxmega3*')

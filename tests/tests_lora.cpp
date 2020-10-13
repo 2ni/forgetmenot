@@ -11,6 +11,7 @@
 #include "cmac.h"
 #include "aes.h"
 #include "lorawan.h"
+#include "tests_lora.h"
 
 Test_Result tests_lora() {
   printf("%s\n", __func__);
