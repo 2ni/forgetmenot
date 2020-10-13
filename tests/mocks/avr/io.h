@@ -169,4 +169,38 @@ typedef struct SIGROW_struct
 extern SIGROW_t FakeSIGROW;
 #define SIGROW (*(SIGROW_t *) &FakeSIGROW)
 
+typedef struct TCB_struct
+{
+  register8_t CTRLA;  /* Control A */
+  register8_t CTRLB;  /* Control Register B */
+  register8_t reserved_0x02;
+  register8_t reserved_0x03;
+  register8_t EVCTRL;  /* Event Control */
+  register8_t INTCTRL;  /* Interrupt Control */
+  register8_t INTFLAGS;  /* Interrupt Flags */
+  register8_t STATUS;  /* Status */
+  register8_t DBGCTRL;  /* Debug Control */
+  register8_t TEMP;  /* Temporary Value */
+  _WORDREGISTER(CNT);  /* Count */
+  _WORDREGISTER(CCMP);  /* Compare or Capture */
+  register8_t reserved_0x0E;
+  register8_t reserved_0x0F;
+} TCB_t;
+
+extern TCB_t FakeTCB;
+#define TCB0 (*(TCB_t *) &FakeTCB)
+
+#define TCB_CAPT_bm  0x01  /* Capture or Timeout bit mask. */
+#define TCB_ENABLE_bm  0x01  /* Enable bit mask. */
+#define TCB0_INT_vect
+
+
+
+typedef enum TCB_CLKSEL_enum
+{
+  TCB_CLKSEL_CLKDIV1_gc = (0x00<<1),  /* CLK_PER (No Prescaling) */
+  TCB_CLKSEL_CLKDIV2_gc = (0x01<<1),  /* CLK_PER/2 (From Prescaler) */
+  TCB_CLKSEL_CLKTCA_gc = (0x02<<1),  /* Use Clock from TCA */
+} TCB_CLKSEL_t;
+
 #endif
