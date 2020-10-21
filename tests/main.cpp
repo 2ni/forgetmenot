@@ -34,7 +34,7 @@ int main() {
   if (number_of_failed) {
     printf(NOK("Failures!!!: %u/%u.") "\n", number_of_failed, number_of_tests);
   } else {
-    printf(OK("All good: %u/%u.") "\n", number_of_failed, number_of_tests);
+    printf(OK("All good: %u/%u.") "\n", number_of_passed, number_of_tests);
   }
 
   return number_of_failed;
