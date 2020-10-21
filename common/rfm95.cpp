@@ -20,7 +20,7 @@
  *      _lastRssi -= 164;
  */
 
-#include <avr/delay.h>
+#include <util/delay.h>
 
 #include "rfm95.h"
 #include "spi.h"

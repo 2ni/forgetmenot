@@ -11,13 +11,7 @@
 #define MOSI       PIN1_bm // PA1
 #define MISO       PIN2_bm // PA2
 #define SCK        PIN3_bm // PA3
-#define CS_RFM     PIN4_bm // PA4
-#define DIO0       PIN5_bm // PA5
-#define DIO1       PIN6_bm // PA6
 #define OUT2       PIN7_bm // PA7
-
-#define PORT_SPI   PORTA
-#define PORT_RFM   PORTA
 
 // PORT B
 #define BLK        PIN0_bm
@@ -28,7 +22,6 @@
 #define OUT1       PIN7_bm
 
 #define PORT_DBG   PORTB
-#define PORT_LCD   PORTB
 
 // PORT C
 #define HALL       PIN3_bm
@@ -48,6 +41,8 @@ extern pin_t pin_touch, pin_moisture, pin_temp_board, pin_temp_moisture, led_g, 
 extern pin_t out1, out2;
 extern pin_t rfm_cs, rfm_interrupt, rfm_timeout;
 extern pin_t multi;
+
+extern pin_t lcd_blk, lcd_cs, lcd_dc, lcd_rst;
 
 void disable_buffer_of_pins();
 void clear_all_pins();

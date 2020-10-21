@@ -18,6 +18,11 @@ pin_t rfm_timeout        = { .port = &PORTA, .pin = 6 }; // PA6
 
 pin_t multi              = { .port = &PORTC, .pin = 4, .port_adc = &ADC1, .pin_adc = 10 }; // PC4
 
+pin_t lcd_blk            = { .port = &PORTB, .pin = 0 }; // PB0
+pin_t lcd_cs             = { .port = &PORTB, .pin = 2 }; // PB2
+pin_t lcd_dc             = { .port = &PORTB, .pin = 3 }; // PB3
+pin_t lcd_rst            = { .port = &PORTB, .pin = 4 }; // PB4
+
 /*
  * disable digital input buffer on all io pins
  * to save power
