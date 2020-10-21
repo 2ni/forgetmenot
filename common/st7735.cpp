@@ -24,7 +24,7 @@ uint8_t st7735_row_start = 0;
 
 /*
  * spi mode 0
- * default orientation: portrait
+ * default orientation: portrait inv
  *     y
  *     ^
  *     | 160
@@ -131,22 +131,22 @@ void st7735_set_orientation(ST_Orientation orientation) {
 
   switch (orientation) {
     case ST7735_PORTRAIT:
-      st7735_data(MADCTL_MX | MADCTL_MY | MADCTL_BGR);
+      st7735_data(MADCTL_MX | MADCTL_MY | MADCTL_RGB);
       st7735_width = st7735_default_width;
       st7735_height = st7735_default_height;
       break;
     case ST7735_LANDSCAPE:
-      st7735_data(MADCTL_MY | MADCTL_MV | MADCTL_BGR);
+      st7735_data(MADCTL_MY | MADCTL_MV | MADCTL_RGB);
       st7735_width = st7735_default_height;
       st7735_height = st7735_default_width;
       break;
     case ST7735_PORTRAIT_INV:
-      st7735_data(MADCTL_BGR);
+      st7735_data(MADCTL_RGB);
       st7735_width  = st7735_default_width;
       st7735_height = st7735_default_height;
       break;
     case ST7735_LANDSCAPE_INV:
-      st7735_data(MADCTL_MX | MADCTL_MV | MADCTL_BGR);
+      st7735_data(MADCTL_MX | MADCTL_MV | MADCTL_RGB);
       st7735_width = st7735_default_height;
       st7735_height = st7735_default_width;
       break;
