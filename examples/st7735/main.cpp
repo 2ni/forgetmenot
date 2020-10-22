@@ -8,9 +8,17 @@
 #include "spi.h"
 #include "sleep.h"
 
+/*
+ * lcd power consumption in sleep mode: ~300uA
+ * to have lower values, the screen must be shut down completely with a mosfet
+ * this requires an init on every wakeup and the screen data is cleared though
+ * for some strange reasons, the display consumes much more during sleep than in the datasheet
+ */
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
   // _PROTECTED_WRITE(CLKCTRL.MCLKCTRLA, CLKCTRL_CLKOUT_bm); // output clk to PB5
+
+  disable_buffer_of_pins(); // to save power
 
   DINIT();
   DF("\n\033[1;38;5;226;48;5;18m Hello from 0x%06lX \033[0m\n", get_deviceid());
