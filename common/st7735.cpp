@@ -11,7 +11,7 @@
 #include "stdlib.h"
 #include "pins.h"
 #include "spi.h"
-#include "sleep.h"
+// #include "sleep.h"
 #include "st7735.h"
 #include "uart.h"
 
@@ -42,10 +42,10 @@ void st7735_init() {
   set_direction(&lcd_blk, 1);
 
   set_output(&lcd_rst, 1);
-  sleep_ms(50);
+  // sleep_ms(50);
 
   st7735_cmd(ST7735_SWRESET); // software reset
-  sleep_ms(150);
+  //sleep_ms(150);
   st7735_cmd(ST7735_SLPOUT);  // out of sleep mode
   st7735_cmd(ST7735_COLMOD);  // color mode 16bit
   st7735_data(0x05);
