@@ -18,8 +18,10 @@ void spi_init(uint8_t mode) {
 */
 
   PORTMUX.CTRLB = PORTMUX_SPI0_DEFAULT_gc; // SPI on PA0-4
-  PORTA.DIR |= MOSI | SCK; // SS probably doesn't need to be set as output to avoid spi going highwire, see SPI_SSD_bm
-  PORTA.DIR &= ~MISO; // input
+  // SS probably doesn't need to be set as output to avoid spi going highwire, see SPI_SSD_bm
+  set_direction(&mosi, 1); // output
+  set_direction(&sck, 1);  // output
+  set_direction(&miso, 0); // input
 
   SPI0.CTRLB = SPI_SSD_bm | mode; // ignore SS pin setting for master, set spi mode 0
 

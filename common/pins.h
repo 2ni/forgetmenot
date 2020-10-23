@@ -8,9 +8,6 @@
 #include <avr/io.h>
 
 // PORT A
-#define MOSI       PIN1_bm // PA1
-#define MISO       PIN2_bm // PA2
-#define SCK        PIN3_bm // PA3
 #define OUT2       PIN7_bm // PA7
 
 // PORT B
@@ -41,7 +38,7 @@ extern pin_t pin_touch, pin_moisture, pin_temp_board, pin_temp_moisture, led_g, 
 extern pin_t out1, out2;
 extern pin_t rfm_cs, rfm_interrupt, rfm_timeout;
 extern pin_t multi;
-
+extern pin_t mosi, miso, sck;
 extern pin_t lcd_blk, lcd_cs, lcd_dc, lcd_rst;
 
 void disable_buffer_of_pins();

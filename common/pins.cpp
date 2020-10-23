@@ -23,6 +23,10 @@ pin_t lcd_cs             = { .port = &PORTB, .pin = 2 }; // PB2
 pin_t lcd_dc             = { .port = &PORTB, .pin = 3 }; // PB3
 pin_t lcd_rst            = { .port = &PORTB, .pin = 4 }; // PB4
 
+pin_t mosi               = { .port = &PORTA, .pin = 1 }; // PA1
+pin_t miso               = { .port = &PORTA, .pin = 2 }; // PA2
+pin_t sck                = { .port = &PORTA, .pin = 3 }; // PA3
+
 /*
  * disable digital input buffer on all io pins
  * to save power
