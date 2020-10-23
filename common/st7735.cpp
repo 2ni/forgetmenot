@@ -13,6 +13,7 @@
 #include "spi.h"
 // #include "sleep.h"
 #include "st7735.h"
+#include "fonts.h"
 #include "uart.h"
 
 uint8_t st7735_default_width = 128;
@@ -303,7 +304,7 @@ void st7735_char(char c, uint8_t x, uint8_t y, uint8_t scale, uint16_t fgcolor, 
   for (int8_t h=7; h>=0; h--) {
     for (uint16_t ii=0; ii<scale; ii++) {
       for (int8_t w=4; w>=0; w--) {
-        uint8_t bits = pgm_read_byte(&char_map[c-32][w]);
+        uint8_t bits = pgm_read_byte(&font[c-32][w]);
         color = ((bits>>h) & 0x01) ? fgcolor : bgcolor;
         for (uint8_t i=0; i<scale; i++) {
           st7735_color(color);
