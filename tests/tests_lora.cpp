@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <string.h>
 
 #include "test.h"
 #include "struct.h"
@@ -84,6 +85,28 @@ Test_Result tests_lora() {
   expected.len = ll;
   number_of_tests++;
   number_of_passed += validate("lora package", &expected, &lora);
+
+  // check input data packet
+  const uint8_t l_phy = 14;
+  uint8_t d_phy[l_phy] = { 0x60, 0x11, 0x34, 0x01, 0x26, 0x10, 0x35, 0x00, 0x01, 0x74, 0x2d, 0x08, 0x6a, 0xc0 };
+  Packet phy = { .data=d_phy, .len=l_phy };
+  phy.len -= 4;
+  uint16_t phy_counter = phy.data[7];
+  phy_counter = (phy_counter << 8) + phy.data[6];
+  direction = 1;
+  uint8_t lenb0 = phy.len+16;
+  uint8_t datab0[lenb0];
+  memset(datab0, 0, lenb0);
+  Packet b0 = { .data=datab0, .len=lenb0 };
+  aes128_b0(&phy, phy_counter, direction, devaddr, &b0);
+
+  aes128_mic(session.nwkskey, &b0, &mic);
+  // printarray(b0.data, b0.len);
+  number_of_tests++;
+  expected.data = &phy.data[l_phy-4];
+  expected.len = 4;
+  number_of_passed += validate("lora rx data package", &expected, &mic);
+
 
   // summary
   Test_Result result = { .total=number_of_tests, .passed=number_of_passed };
