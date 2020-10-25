@@ -25,10 +25,12 @@ int main(void) {
 
   led_flash(&led_b, 3);
 
+  char some_string[5] = "Test";
+
   ssd1306_init();
   ssd1306_dot(64, 0);
   ssd1306_char('a', 4, 0);
-  ssd1306_text("Hello", 0, 0);
+  ssd1306_text(some_string, 0, 0);
   ssd1306_text("World", 7, 0);
   ssd1306_hline(8, 0, 64, 4); // max width: 128
   sleep_s(2);
