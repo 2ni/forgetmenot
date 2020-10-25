@@ -86,8 +86,9 @@ int main(void) {
     uart_arr("appskey", session.appskey, 16);
     uart_arr("nwkskey", session.nwkskey, 16);
     uart_arr("devaddr", session.devaddr, 4);
+    DF("datarate: %u\n", session.datarate);
     session.counter = 0;
-    if (lorawan_send(&payload, &session, 2, 9, &rx_packet) == OK) {
+    if (lorawan_send(&payload, &session, 2, session.datarate, &rx_packet) == OK) {
       uart_arr("received message", rx_packet.data, rx_packet.len);
     }
   } else {

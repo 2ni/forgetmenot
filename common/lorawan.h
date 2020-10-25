@@ -1,4 +1,4 @@
-#ifndef __LORAWAN_H_
+#ifndef __LORAWAN_H__
 #define __LORAWAN_H__
 
 #include <avr/io.h>

@@ -55,7 +55,7 @@
  */
 Status lorawan_join(Lora_otaa *otaa, Lora_session *session) {
   uint8_t tx_channel = 0;
-  uint8_t tx_datarate = 9;
+  uint8_t tx_datarate = 7;
 
   uint8_t rx_channel;
   uint8_t rx_datarate;
@@ -64,7 +64,7 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session) {
   uint8_t trials = 0;
   extern uint32_t m;
   uint16_t airtime;
-  uint16_t num_trials = 3;
+  uint16_t num_trials = 7;
   // we try multiple times to get a join accept package (trying to fullfill retransmission on p.65 of 1.0.3 specification)
   while (trials < num_trials) {
     valid_lora = 0;
@@ -91,8 +91,9 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session) {
       airtime = lorawan_airtime(33, rx_datarate); // join request len = 33bytes
       // timer.stop();
       DF("(%lu) RX1: waiting for data ch%u SF%u (air: %u)\n", millis_time()-m, rx_channel, rx_datarate, airtime);
-      while ((millis_time()-m) < 5000);
+      while ((millis_time()-m) < 5000) {}
       if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_join_accept(otaa, session) == OK) {
+        session->datarate = tx_datarate;
         valid_lora = 1;
       }
       /*
@@ -126,8 +127,9 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session) {
     airtime = lorawan_airtime(33, rx_datarate);
     // timer.stop();
     DF("(%lu) RX2: waiting for data ch%u SF%u (air: %u)\n", millis_time()-m, rx_channel, rx_datarate, airtime);
-    while ((millis_time()-m) < 6000);
+    while ((millis_time()-m) < 6000) {}
     if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_join_accept(otaa, session) == OK) {
+      session->datarate = tx_datarate;
       valid_lora = 1;
     }
     /*
@@ -150,7 +152,7 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session) {
     }
     if (valid_lora) return OK;
 
-    // TODO tx_datarate++;
+    tx_datarate++;
     if (tx_datarate > 12) tx_datarate = 12;  // try SF7, SF8, ... until SF12
 
     trials++;
@@ -176,10 +178,13 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session) {
 
 /*
  * TODO channel is selected automatically
+ * if datarate >= 9 -> response at 9/99
+ * else response at same datarate/channel
  */
 Status lorawan_send(const Packet *payload, const Lora_session *session, const uint8_t channel, const uint8_t datarate, Packet *rx_payload) {
   uint8_t len = payload->len+13;
-  uint8_t data[len] = {0};
+  uint8_t data[len];
+  memset(data, 0, len);
   Packet lora = { .data=data, .len=len };
   lorawan_create_package(payload, session, &lora);
 
@@ -195,7 +200,7 @@ Status lorawan_send(const Packet *payload, const Lora_session *session, const ui
   rx_datarate = 9;
   uint8_t valid_lora = 0;
   rfm95_receive_continuous(rx_channel, rx_datarate);
-  while ((millis_time() - m) < 10000 && !valid_lora) {
+  while ((millis_time() - m) < 5000 && !valid_lora) {
     if (get_output(&rfm_interrupt) && lorawan_decode_data_down(session, rx_payload) == OK) {
       valid_lora = 1;
       DF("(%lu) received\n", millis_time()-m);
@@ -228,9 +233,10 @@ Status lorawan_send(const Packet *payload, const Lora_session *session, const ui
 Status lorawan_decode_data_down(const Lora_session *session, Packet *payload) {
   uint8_t datap[64] = {0};
   Packet phy = { .data=datap, .len=64 }; // PhyPayload MHDR(1) MAC Payload|Join Accept MIC(4)
+  Status status = rfm95_read(&phy);
+  uart_arr("raw rx package", phy.data, phy.len);
 
   // check crc
-  Status status = rfm95_read(&phy);
   if (rfm95_read(&phy) != OK) {
     DF("error (%u)\n", status);
     return status;
@@ -245,7 +251,8 @@ Status lorawan_decode_data_down(const Lora_session *session, Packet *payload) {
 
   // check devaddr
   uint8_t len = 4;
-  uint8_t data[len] = {0};
+  uint8_t data[len];
+  memset(data, 0, len);
   Packet mic = { .data=data, .len=len };
 
   uint8_t devaddr[4] = {0};
@@ -266,12 +273,13 @@ Status lorawan_decode_data_down(const Lora_session *session, Packet *payload) {
   uint8_t direction = 1;
 
   uint8_t lenb0 = phy.len+16;
-  uint8_t datab0[lenb0] = {0};
+  uint8_t datab0[lenb0];
+  memset(datab0, 0, lenb0);
   Packet b0 = { .data=datab0, .len=lenb0 };
   aes128_b0(&phy, counter, direction, devaddr, &b0);
   aes128_mic(session->nwkskey, &b0, &mic);
   if (!lorawan_is_same(mic.data, &phy.data[phy.len], 4)) {
-    // DL(NOK("MIC fail!"));
+    DL(NOK("MIC fail!"));
     return NO_DATA;
   }
 
@@ -336,11 +344,12 @@ Status lorawan_decode_join_accept(const Lora_otaa *otaa, Lora_session *session) 
   phy.len -= 4; // "remove" mic
 
   uint8_t len = 4;
-  uint8_t data[len] = {0};
+  uint8_t data[len];
+  memset(data, 0, len);
   Packet mic = { .data=data, .len=len };
   aes128_mic(otaa->appkey, &phy, &mic);
   if (!lorawan_is_same(mic.data, &phy.data[phy.len], 4)) {
-    // DL(NOK("MIC fail!"));
+    DL(NOK("MIC fail!"));
     return NO_DATA;
   }
 
@@ -388,7 +397,8 @@ Status lorawan_decode_join_accept(const Lora_otaa *otaa, Lora_session *session) 
 
 void lorawan_send_join_request(const Lora_otaa *otaa, uint8_t channel, uint8_t datarate) {
   uint8_t len = 23; // mhrd(1) + appeui(8) + deveui(8) + devnonce(2) + mic(4)
-  uint8_t data[len] = {0};
+  uint8_t data[len];
+  memset(data, 0, len);
   Packet join = { .data=data, .len=len };
 
   join.data[0] = 0x00; // mac_header (mtype 000: join request)
@@ -447,9 +457,9 @@ void lorawan_cipher(Packet *payload, const uint16_t counter, const uint8_t direc
 
 /*
  * lorawan packet: header+port(9) + FRMpayload() + mic(3)
- * FRMpayload: len
- * lorawan: len+13
- * with B0: len+9+16
+ * payload: len
+ * lora: len+13
+ * (with B0: len+9+16)
  *
  * package:     40 11 34 01 26 00 05 00 01 6f c9 03
  * b0: 49 00 00 00 00 00 11 34 01 26 05 00 00 00 00 0c 40 11 34 01 26 00 05 00 01 6f c9 03
@@ -470,7 +480,8 @@ void lorawan_create_package(const Packet *payload, const Lora_session *session, 
   lora->data[8] = 0x01;                                                  // frame port hardcoded for now. port>1 use AppSKey else NwkSkey
 
   // encrypt payload (=FRMPayload)
-  uint8_t data[payload->len] = {0};
+  uint8_t data[payload->len];
+  memset(data, 0, payload->len);
   Packet payload_encrypted = { .data=data, .len=payload->len };
   payload_encrypted.len = payload->len;
   for (uint8_t i=0; i<payload_encrypted.len; i++) {
@@ -484,7 +495,8 @@ void lorawan_create_package(const Packet *payload, const Lora_session *session, 
 
   // calculate mic of package consisting of header + data
   uint8_t lenb0 = payload->len+9+16;
-  uint8_t datab0[lenb0] = {0};
+  uint8_t datab0[lenb0];
+  memset(datab0, 0, lenb0);
   Packet b0 = { .data=datab0, .len=lenb0 };
   aes128_b0(lora, session->counter, direction, session->devaddr, &b0);
   uint8_t dmic[4] = {0};
