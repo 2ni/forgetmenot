@@ -20,6 +20,7 @@ typedef struct {
   uint8_t *appskey;
   uint8_t *devaddr;
   uint16_t counter;
+  uint8_t datarate;
 } Lora_session;
 
 typedef struct {
