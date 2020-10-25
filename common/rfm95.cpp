@@ -61,7 +61,7 @@ uint8_t rfm95_init() {
   rfm95_set_datarate(12);
 
   // PA minimal power 17dbm
-  rfm95_setpower(13);
+  rfm95_setpower(9);
   // rfm95_write_reg(0x09, 0xF0);
 
   // rx timeout set to 37 symbols
