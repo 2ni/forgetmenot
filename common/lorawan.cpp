@@ -131,7 +131,7 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
     airtime = lorawan_airtime(33, rx_datarate);
     // timer.stop();
     DF("(%lu) RX2: waiting for data ch%u SF%u (air: %u)\n", millis_time()-now, rx_channel, rx_datarate, airtime);
-    while ((millis_time()-now) < (6050)) {}
+    while ((millis_time()-now) < (6060)) {}
     if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_join_accept(otaa, session) == OK) {
       session->datarate = tx_datarate;
       valid_lora = 1;
@@ -185,6 +185,8 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
 }
 
 /*
+ * TODO increment session.counter on success
+ * TODO use sleep_ms instead of millis_time()
  * TODO channel is selected automatically
  * TODO sendind on SF12 -> response SF9 rx1 window???
  * if datarate >= 9 -> response at 9/99
@@ -209,28 +211,36 @@ Status lorawan_send(const Packet *payload, const Lora_session *session, const ui
   rx_datarate = 9;
   uint8_t valid_lora = 0;
   rfm95_receive_continuous(rx_channel, rx_datarate);
-  while ((millis_time() - now) < 5000 && !valid_lora) {
+  while ((millis_time() - now) < 3000 && !valid_lora) {
     if (get_output(&rfm_interrupt) && lorawan_decode_data_down(session, rx_payload) == OK) {
       valid_lora = 1;
-      DF("(%lu) received\n", millis_time()-now);
     }
   }
-  return (valid_lora ? OK : NO_DATA);
+  if (valid_lora) {
+    DF(OK("(%lu) RX success") "\n", millis_time()-now);
+    return OK;
+  } else {
+    DF(NOK("(%lu) RX timeout") "\n", millis_time()-now);
+    return NO_DATA;
+  }
   */
 
   // rx1 window
-  DF("(%lu) RX1: waiting for data ch%u SF%u\n", millis_time()-now, rx_channel, rx_datarate);
-  while ((millis_time()-now) < 1000);
-  if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_data_down(session, rx_payload) == OK) {
-    DL(OK("received rx1"));
-    return OK;
+  // no rx1 window for SF12 as it would takte too much time for 1sec window (airtime 1.8sec)
+  if (datarate != 12) {
+    DF("(%lu) RX1: waiting for data ch%u SF%u\n", millis_time()-now, rx_channel, rx_datarate);
+    while ((millis_time()-now) < 1010);
+    if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_data_down(session, rx_payload) == OK) {
+      DL(OK("received rx1"));
+      return OK;
+    }
   }
 
   // rx2 window
   rx_channel = 99;
   rx_datarate = 9;
   DF("(%lu) RX2: waiting for data ch%u SF%u\n", millis_time()-now, rx_channel, rx_datarate);
-  while ((millis_time()-now) < 2000);
+  while ((millis_time()-now) < 2020);
   if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_data_down(session, rx_payload) == OK) {
     DL(OK("received rx2"));
     return OK;
@@ -243,7 +253,7 @@ Status lorawan_decode_data_down(const Lora_session *session, Packet *payload) {
   uint8_t datap[64] = {0};
   Packet phy = { .data=datap, .len=64 }; // PhyPayload MHDR(1) MAC Payload|Join Accept MIC(4)
   Status status = rfm95_read(&phy);
-  uart_arr("raw rx package", phy.data, phy.len);
+  // uart_arr("raw rx package", phy.data, phy.len);
 
   // check crc
   if (rfm95_read(&phy) != OK) {
@@ -273,7 +283,7 @@ Status lorawan_decode_data_down(const Lora_session *session, Packet *payload) {
     return NO_DATA;
   }
 
-  uart_arr("you've got mail", phy.data, phy.len);
+  // uart_arr("you've got mail", phy.data, phy.len);
 
   // check mic by calculating mic over received msg (see https://tools.ietf.org/html/rfc4493 chapter 2.5)
   phy.len -= 4; // ignore mic for calculation

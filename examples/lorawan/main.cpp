@@ -116,6 +116,7 @@ int main(void) {
   Packet rx_packet = { .data=rx_data, .len=rx_len };
 
 #ifdef OTAA
+  DL("OTAA sample");
   extern uint8_t DEVEUI[8];
   extern uint8_t APPEUI[8];
   extern uint8_t APPKEY[16];
@@ -150,6 +151,8 @@ int main(void) {
   }
   DL("done");
 #else
+  DL("ABP sample");
+
   extern uint8_t DEVADDR[4];
   extern uint8_t NWKSKEY[16];
   extern uint8_t APPSKEY[16];
@@ -157,8 +160,15 @@ int main(void) {
   Lora_session session = { .nwkskey=NWKSKEY, .appskey=APPSKEY, .devaddr=DEVADDR, .counter=counter };
 
   // send package (final test)
-  if (lorawan_send(&payload, &session, 2, 9, &rx_packet) == OK) {
-    uart_arr("received message", rx_packet.data, rx_packet.len);
+  for (uint8_t trial=0; trial<3; trial++) {
+    for (uint8_t datarate = 12; datarate<13; datarate++) {
+      if (lorawan_send(&payload, &session, 2, datarate, &rx_packet) == OK) {
+        uart_arr("received message", rx_packet.data, rx_packet.len);
+      }
+      session.counter++;
+      DL("");
+      sleep_s(5);
+    }
   }
   DL("done.");
 #endif
