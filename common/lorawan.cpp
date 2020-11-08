@@ -185,21 +185,19 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
 }
 
 /*
- * TODO increment session.counter on success
  * TODO use sleep_ms instead of millis_time()
- * TODO channel is selected automatically
- * TODO sendind on SF12 -> response SF9 rx1 window???
- * if datarate >= 9 -> response at 9/99
  * else response at same datarate/channel
  */
-Status lorawan_send(const Packet *payload, const Lora_session *session, const uint8_t channel, const uint8_t datarate, Packet *rx_payload) {
+Status lorawan_send(const Packet *payload, Lora_session *session, const uint8_t datarate, Packet *rx_payload) {
   uint8_t len = payload->len+13;
   uint8_t data[len];
   memset(data, 0, len);
   Packet lora = { .data=data, .len=len };
   lorawan_create_package(payload, session, &lora);
+  uint8_t channel = (uint8_t)(rfm95_get_random(2)); // random channel 0-3
 
   rfm95_send(&lora, channel, datarate);
+  session->counter++;
   uint32_t now = millis_time();
   DF("package sent ch%u SF%u\n", channel, datarate);
 
