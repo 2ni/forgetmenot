@@ -162,10 +162,9 @@ int main(void) {
   // send package (final test)
   for (uint8_t trial=0; trial<3; trial++) {
     for (uint8_t datarate = 12; datarate<13; datarate++) {
-      if (lorawan_send(&payload, &session, 2, datarate, &rx_packet) == OK) {
+      if (lorawan_send(&payload, &session, datarate, &rx_packet) == OK) {
         uart_arr("received message", rx_packet.data, rx_packet.len);
       }
-      session.counter++;
       DL("");
       sleep_s(5);
     }
