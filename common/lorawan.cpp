@@ -47,7 +47,6 @@
  *
  * CAUTION: we have an additional waiting of 50ms because millis_time() seems to be ~50ms too fast
  *
- * TODO set rfm95 to sleep when waiting for receive window
  * TODO set attiny to sleep and wake up on pin interrupt rfm_interrupt or time_out
  *
  * TODO save received cflist, uplink datarate, offset and delay
@@ -185,10 +184,6 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
   return ERROR;
 }
 
-/*
- * TODO use sleep_ms instead of millis_time()
- * else response at same datarate/channel
- */
 Status lorawan_send(const Packet *payload, Lora_session *session, const uint8_t datarate, Packet *rx_payload) {
   uint8_t len = payload->len+13;
   uint8_t data[len];
