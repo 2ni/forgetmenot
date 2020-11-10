@@ -46,6 +46,14 @@ void _s_common(uint16_t per, uint8_t prescaler) {
   RTC.CTRLA = (prescaler<<3) | RTC_RTCEN_bm | RTC_RUNSTDBY_bm;
   RTC.INTCTRL = (1 << RTC_OVF_bp);      // overflow interrupt
   RTC.CLKSEL = RTC_CLKSEL_INT1K_gc;     // 32.768kHz / 32 -> 1024Hz
+
+  /*
+  _PROTECTED_WRITE(CLKCTRL.XOSC32KCTRLA, CLKCTRL_ENABLE_bm | CLKCTRL_RUNSTDBY_bm); // external crystal, runstdby, enable
+  RTC.CLKSEL = (0<<CLKCTRL_ENABLE_bp);
+  while (CLKCTRL.MCLKSTATUS & CLKCTRL_XOSC32KS_bm); // wait until status = 0
+  RTC.CLKSEL = RTC_CLKSEL_TOSC32K_gc | CLKCTRL_ENABLE_bm;
+  */
+
   RTC.PER = per;
   RTC.CNT = 0;
 
@@ -79,5 +87,5 @@ void sleep_ms(uint16_t ms) {
  * max 2^16bit
  */
 void sleep_s(uint16_t seconds) {
-  _s_common(seconds, 10);
+  _s_common(seconds, 0xa);
 }
