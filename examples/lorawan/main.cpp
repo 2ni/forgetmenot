@@ -143,7 +143,7 @@ int main(void) {
     uart_arr("devaddr", session.devaddr, 4);
     DF("datarate: %u\n", session.datarate);
     session.counter = 0;
-    if (lorawan_send(&payload, &session, 2, session.datarate, &rx_packet) == OK) {
+    if (lorawan_send(&payload, &session, session.datarate, &rx_packet) == OK) {
       uart_arr("received message", rx_packet.data, rx_packet.len);
     }
   } else {
