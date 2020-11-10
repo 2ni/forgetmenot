@@ -52,7 +52,7 @@ uint8_t rfm95_init() {
   // standby mode and lora mode
   rfm95_write_reg(0x01, 0x81);
   // TODO delay needed?
-  _delay_ms(10);
+  // _delay_ms(10);
 
   // set carrier frequency
   rfm95_set_channel(0);
@@ -86,7 +86,8 @@ uint8_t rfm95_init() {
   rfm95_write_reg(0x0F, 0x00);
 
   // switch rfm to sleep
-  rfm95_write_reg(0x01, 0x80);
+  rfm95_sleep();
+  // rfm95_write_reg(0x01, 0x80);
 
   return version;
 }
@@ -206,6 +207,7 @@ Status rfm95_read(Packet *packet) {
   }
 
   rfm95_write_reg(0x12, 0xE0); // clear interrupt register
+  rfm95_sleep();
 
   return status;
 }
@@ -251,7 +253,8 @@ void rfm95_send(const Packet *packet, const uint8_t channel, const uint8_t datar
 
   rfm95_write_reg(0x12, 0x08); // clear interrupt
 
-  rfm95_write_reg(0x01, 0x80); // switch rfm to sleep
+  rfm95_sleep();
+  // rfm95_write_reg(0x01, 0x80); // switch rfm to sleep
 
   // uart_arr(WARN("pkg sent"), packet->data, packet->len);
 }
@@ -326,7 +329,8 @@ uint32_t rfm95_get_random(uint8_t bits) {
   }
 
   // set to sleep
-  rfm95_write_reg(0x01, 0x80);
+  rfm95_sleep();
+  // rfm95_write_reg(0x01, 0x80);
 
   return rnd;
 }

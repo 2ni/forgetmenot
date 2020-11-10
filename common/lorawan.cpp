@@ -111,7 +111,6 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
         }
       }
       */
-      rfm95_sleep();
 
       if (valid_lora) {
         DF(OK("(%lu) RX1 success") "\n", millis_time()-now);
@@ -151,7 +150,6 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
       }
     }
     */
-    rfm95_sleep();
 
     if (valid_lora) {
       DF(OK("(%lu) RX2 success") "\n", millis_time()-now);
@@ -167,7 +165,6 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
 
     trials++;
     if (trials < num_trials) {
-      // rfm95_sleep();
       // DL(NOK("timeout!"));
       uint8_t sleep_time = (uint8_t)(5+rfm95_get_random(8) / 8);
       DF("sleeping: %us\n", sleep_time);
@@ -264,7 +261,7 @@ Status lorawan_decode_data_down(const Lora_session *session, Packet *payload) {
   // uart_arr("raw rx package", phy.data, phy.len);
 
   // check crc
-  if (rfm95_read(&phy) != OK) {
+  if (status != OK) {
     DF("error (%u)\n", status);
     return status;
   }
@@ -348,7 +345,7 @@ Status lorawan_decode_join_accept(const Lora_otaa *otaa, Lora_session *session) 
   // check crc
   Status status = rfm95_read(&phy);
   // uart_arr("raw join accept package", phy.data, phy.len);
-  if (rfm95_read(&phy) != OK) {
+  if (status != OK) {
     DF("error (%u)\n", status);
     return status;
   }
