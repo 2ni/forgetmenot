@@ -47,7 +47,6 @@
  *
  * CAUTION: we have an additional waiting of 50ms because millis_time() seems to be ~50ms too fast
  *
- * TODO use sleep_ms() instead of millis_time()
  * TODO set rfm95 to sleep when waiting for receive window
  * TODO set attiny to sleep and wake up on pin interrupt rfm_interrupt or time_out
  *
@@ -75,6 +74,7 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
     tx_channel = (tx_channel+1) % 3; // iterate through channel 0..2
     rx_channel = tx_channel;
     rx_datarate = tx_datarate;
+    uint16_t sleep_window_rx1= 4990;
 
     // use correct datarates, channels for join request and accept listening
     // see "receive windows" in https://lora-alliance.org/sites/default/files/2018-05/lorawan_regional_parameters_v1.0.2_final_1944_1.pdf
@@ -93,7 +93,9 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
       airtime = lorawan_airtime(33, rx_datarate); // join request len = 33bytes
       // timer.stop();
       DF("(%lu) RX1: waiting for data ch%u SF%u (air: %u)\n", millis_time()-now, rx_channel, rx_datarate, airtime);
-      while ((millis_time()-now) < (5050)) {}
+      // while ((millis_time()-now) < (5050)) {}
+      sleep_ms(sleep_window_rx1-(millis_time()-now));
+      now = millis_time();
       if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_join_accept(otaa, session) == OK) {
         session->datarate = tx_datarate;
         valid_lora = 1;
@@ -119,6 +121,7 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
       } else {
         DF(NOK("(%lu) RX1 timeout") "\n", millis_time()-now);
       }
+      sleep_window_rx1 = 0;
     }
 
     // rx2 window: 6sec + lorawan_airtime(33, rx_datarate)
@@ -131,7 +134,8 @@ Status lorawan_join(Lora_otaa *otaa, Lora_session *session, uint8_t wholescan) {
     airtime = lorawan_airtime(33, rx_datarate);
     // timer.stop();
     DF("(%lu) RX2: waiting for data ch%u SF%u (air: %u)\n", millis_time()-now, rx_channel, rx_datarate, airtime);
-    while ((millis_time()-now) < (6060)) {}
+    // while ((millis_time()-now) < (6060)) {}
+    sleep_ms(sleep_window_rx1+990-(millis_time()-now));
     if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_join_accept(otaa, session) == OK) {
       session->datarate = tx_datarate;
       valid_lora = 1;
@@ -197,12 +201,14 @@ Status lorawan_send(const Packet *payload, Lora_session *session, const uint8_t 
   uint8_t channel = (uint8_t)(rfm95_get_random(2)); // random channel 0-3
 
   rfm95_send(&lora, channel, datarate);
-  session->counter++;
   uint32_t now = millis_time();
+  session->counter++;
   DF("package sent ch%u SF%u\n", channel, datarate);
 
   uint8_t rx_channel = channel;
   uint8_t rx_datarate = datarate;
+
+  uint16_t sleep_window_rx1 = 990;
 
   /*
   rx_channel = 99;
@@ -227,18 +233,22 @@ Status lorawan_send(const Packet *payload, Lora_session *session, const uint8_t 
   // no rx1 window for SF12 as it would takte too much time for 1sec window (airtime 1.8sec)
   if (datarate != 12) {
     DF("(%lu) RX1: waiting for data ch%u SF%u\n", millis_time()-now, rx_channel, rx_datarate);
-    while ((millis_time()-now) < 1010);
+    // while ((millis_time()-now) < 1010);
+    sleep_ms(sleep_window_rx1-(millis_time()-now));
+    now = millis_time();
     if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_data_down(session, rx_payload) == OK) {
       DL(OK("received rx1"));
       return OK;
     }
+    sleep_window_rx1 = 0;
   }
 
   // rx2 window
   rx_channel = 99;
   rx_datarate = 9;
   DF("(%lu) RX2: waiting for data ch%u SF%u\n", millis_time()-now, rx_channel, rx_datarate);
-  while ((millis_time()-now) < 2020);
+  // while ((millis_time()-now) < 2020);
+  sleep_ms(sleep_window_rx1+990-(millis_time()-now));
   if (rfm95_wait_for_single_package(rx_channel, rx_datarate) == OK && lorawan_decode_data_down(session, rx_payload) == OK) {
     DL(OK("received rx2"));
     return OK;

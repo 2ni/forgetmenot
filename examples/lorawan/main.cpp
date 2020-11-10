@@ -160,8 +160,8 @@ int main(void) {
   Lora_session session = { .nwkskey=NWKSKEY, .appskey=APPSKEY, .devaddr=DEVADDR, .counter=counter };
 
   // send package (final test)
-  for (uint8_t trial=0; trial<3; trial++) {
-    for (uint8_t datarate = 12; datarate<13; datarate++) {
+  for (uint8_t trial=0; trial<1; trial++) {
+    for (uint8_t datarate = 7; datarate<13; datarate++) {
       if (lorawan_send(&payload, &session, datarate, &rx_packet) == OK) {
         uart_arr("received message", rx_packet.data, rx_packet.len);
       }
