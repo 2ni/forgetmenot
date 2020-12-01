@@ -130,7 +130,7 @@ flash: all
 
 # reset device
 reset:
-	@$(PYUPDI) -r && afplay /System/Library/Sounds/Ping.aiff -v 30
+	@$(PYUPDI) -r && afplay /System/Library/Sounds/Ping.aiff -v 20
 
 # generate disassembly files for debugging
 disasm: $(PRJ).elf
