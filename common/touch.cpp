@@ -2,6 +2,7 @@
 #include "pins.h"
 #include "touch.h"
 #include "uart.h"
+#include "millis.h"
 
 TOUCH::TOUCH(pin_t *ipin) {
   pin = ipin;
@@ -17,16 +18,16 @@ void TOUCH::set_thresholds(uint16_t ithreshold) {
   threshold = ithreshold;
   threshold_upper = ithreshold + 30;
   threshold_lower = ithreshold + 15;
-  DF("touch threshold: %u", threshold);
-  DF("touch threshold upper: %u", threshold_upper);
-  DF("touch threshold lower: %u", threshold_lower);
+  DF("touch threshold: %u\n", threshold);
+  DF("touch threshold upper: %u\n", threshold_upper);
+  DF("touch threshold lower: %u\n", threshold_lower);
 }
 
 uint16_t TOUCH::get_avg() {
   uint16_t v, avg = 0;
   for(uint8_t i=0; i<10; i++) {
     v = get_touch();
-    DF("v: %u", v);
+    DF("v: %u\n", v);
     if (i>4) avg += v;
   }
   avg /= 5;
@@ -101,4 +102,44 @@ uint8_t TOUCH::was_pressed() {
 
   if (v < (threshold_lower)) cleared = 1;
   return 0;
+}
+
+uint8_t TOUCH::is_short_long(uint16_t timeout) {
+  uint16_t v = get_touch();
+  uint8_t finger_present = v > threshold_upper;
+  uint8_t finger_change = finger_present != status_finger;
+  status_finger = finger_present;
+
+  switch (status) {
+    case IDLE:
+      if (finger_change && finger_present) {
+        status = PRESSED;
+        now = millis_time();
+        // press_notified = 0;
+      }
+      break;
+    case PRESSED:
+      if (!finger_present && (millis_time()-now) < timeout) {
+        status = SHORT;
+      } else if ((millis_time()-now) > timeout) {
+        status = LONG;
+      }
+      break;
+    case SHORT:
+    case LONG:
+      status = IDLE;
+      break;
+  }
+
+  /*
+  if (status == PRESSED && press_notified) {
+    return IDLE;
+  }
+
+  if ( status == PRESSED) {
+    press_notified = 1;
+  }
+  */
+
+  return status;
 }
