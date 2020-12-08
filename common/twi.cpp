@@ -16,9 +16,9 @@ uint8_t twi_start(uint8_t addr) {
     TWI0.MCTRLB &= ~(1 << TWI_ACKACT_bp);
     TWI0.MADDR = addr ;
     if (addr & 0x01) {
-      while(!(TWI0.MSTATUS & TWI_RIF_bm));
+      while (!(TWI0.MSTATUS & TWI_RIF_bm));
     } else {
-      while(!(TWI0.MSTATUS & TWI_WIF_bm));
+      while (!(TWI0.MSTATUS & TWI_WIF_bm));
     }
     return 0;
   } else {
@@ -38,7 +38,7 @@ uint8_t twi_write(uint8_t data) {
 
 uint8_t twi_read(uint8_t ack) { // ack=1 send ack ; ack=0 send nack
   if ((TWI0.MSTATUS & TWI_BUSSTATE_gm) == TWI_BUSSTATE_OWNER_gc) { // Verify Master owns the bus
-    while(!(TWI0.MSTATUS & TWI_RIF_bm)); // Wait until RIF set
+    while (!(TWI0.MSTATUS & TWI_RIF_bm)); // Wait until RIF set
     uint8_t data = TWI0.MDATA;
     // si ack=1 mise à 0 ACKACT => action send ack
     // sinon (ack=0) => mise à 1 ACKACT => nack préparé pour actionstop
