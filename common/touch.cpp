@@ -26,7 +26,7 @@ void TOUCH::set_thresholds(uint16_t ithreshold) {
 uint16_t TOUCH::get_avg() {
   uint16_t v, avg = 0;
   for(uint8_t i=0; i<10; i++) {
-    v = get_touch();
+    v = get_data();
     DF("v: %u\n", v);
     if (i>4) avg += v;
   }
@@ -36,76 +36,125 @@ uint16_t TOUCH::get_avg() {
 }
 
 /*
+ * air:  760 (380)
+ * 25%:  800
+ * 50%:  570
+ * 75%:  460
+ * 100%: 400 (200)
+ *
+ * returns value 0-100
+ */
+uint8_t TOUCH::get_data_relative() {
+  uint16_t v = get_data();
+  DF("v: %u\n", v);
+
+  v /= 2;  // divide by 2 to avoid overflow on uint16_t
+
+  if (v > 380) v = 380;        // 100% = 760
+  v *= 100;
+
+  return (uint8_t)((38000-v)/200);
+}
+
+/*
  * get touch value of loaded Ct on Csh
  * returns a value between 0-1023
  * the higher the value the higher Ct
- * PC5 = AIN11
+ *
+ * not suited for moisture sensor, as Csh will "saturate"
+ * and show almost no difference from 50-100%
  */
-uint16_t TOUCH::get_touch() {
+uint16_t TOUCH::get_data() {
   /*
-  ADC1->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+   * button sensor PC5 = ADC1.AIN11
+   * moisture sensor PC1 = ADC1.AIN7
+   *
+   * set input with pullup (charges Ct)
+   * connect adc mux to gnd to discharge it
+   * start conversion and wait for finishing
+   * set input
+   * read adc value
+   * see https://github.com/martin2250/ADCTouch/blob/master/src/ADCTouch.cpp
+   */
 
-  uint16_t result;
-  PORTC.DIRSET = PIN5_bm; // set output and low to discharge touch
-  ADC1.MUXPOS = ADC_MUXPOS_GND_gc; // discharge s/h cap by setting muxpos = gnd and run
-  ADC1.CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
-  ADC1.COMMAND |= 1;
-  while (!(ADC1.INTFLAGS & ADC_RESRDY_bm));
-  result = ADC1.RES;
-
-  PORTC.DIRCLR = PIN5_bm; // set input with pullup to charge touch
-  PORTC.PIN5CTRL |= PORT_PULLUPEN_bm;
+  /*
+  PORTC.DIRCLR = PIN5_bm; // input
+  PORTC.PIN5CTRL = PORT_PULLUPEN_bm; // pullup
+  ADC1.CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+  ADC1.MUXPOS = ADC_MUXPOS_GND_gc; // discharge s/h cap by setting muxpos = gnd
   _delay_us(10);
-  PORTC.PIN5CTRL &= ~PORT_PULLUPEN_bm; // disable pullup
-
-  // enable adc, equalize s/h cap charge with touch charge
-  ADC1.MUXPOS =  ADC_MUXPOS_AIN11_gc;
   ADC1.CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
+  PORTC.PIN5CTRL = 0; // disable pullup
+  ADC1.MUXPOS = ADC_MUXPOS_AIN11_gc;
   ADC1.COMMAND |= 1;
   while (!(ADC1.INTFLAGS & ADC_RESRDY_bm));
-  result = ADC1.RES;
-
-  ADC1.CTRLA = 0; // disable adc
-
+  uint16_t result = ADC1.RES;
   return result;
   */
 
+  set_direction(pin, 0);  // set input for high impedance
+  set_pullup(pin, 0);     // set pullup to charge attached Ctouch
   (*pin).port_adc->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+  (*pin).port_adc->MUXPOS = ADC_MUXPOS_GND_gc; // discharge Csh
+  // _delay_us(10); // not needed for touch sensors
+  set_pullup(pin, 1);    // disable pullup
 
-  uint16_t result;
-  set_direction(pin, 1);           // set output and low to discharge touch
-  result = get_adc(pin, ADC_MUXPOS_GND_gc); // discharge s/h cap by setting muxpos to gnd and run a measurement
-
-  set_direction(pin, 0);           // set input with pullup to charge touch
-  set_pullup(pin, 0);
-  _delay_us(10);
-  set_pullup(pin, 1);              // disable pullup
-
-  // enable adc, equalize s/h cap charge with touch charge by setting muxpos and running measurement
-  result = get_adc(pin);
+  // start adc, equalize Ctouch and Csh by setting MUXPOS to AINx and run measurement
+  // does not use get_adc to make it faster
+  // uint16_t result = get_adc(pin);
+  // return result;
+  (*pin).port_adc->MUXPOS = ((ADC_MUXPOS_AIN0_gc + (*pin).pin_adc) << 0);
+  (*pin).port_adc->CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
+  (*pin).port_adc->COMMAND |= 1;
+  while (!((*pin).port_adc->INTFLAGS & ADC_RESRDY_bm));
+  uint16_t result = (*pin).port_adc->RES;
 
   return result;
 }
 
 uint8_t TOUCH::is_pressed() {
-  uint16_t v = get_touch();
+  uint16_t v = get_data();
   return v > threshold_upper;
 }
 
 uint8_t TOUCH::was_pressed() {
-  uint16_t v = get_touch();
+  uint16_t v = get_data();
 
-  if (v > (threshold_upper) && cleared) {
-    cleared = 0;
+  // finger present
+  if (v > threshold_upper && !finger_present) {
+    finger_present = 1;
     return 1;
   }
 
-  if (v < (threshold_lower)) cleared = 1;
+  // finger not present
+  if (v < threshold_lower) finger_present = 0;
   return 0;
 }
 
+TOUCH::STATUS TOUCH::pressed(uint16_t timeout) {
+  uint32_t now;
+  uint16_t v = get_data();
+
+  if (v < threshold_lower && finger_present) {
+    finger_present = 0;
+  }
+
+  // finger present
+  if (v > threshold_upper && !finger_present) {
+    now = millis_time();
+    finger_present = 1;
+
+    // wait for release or timeout
+    while (!(get_data() < threshold_lower) && !((millis_time()-now) > timeout));
+
+    return ((millis_time()-now)<timeout ? SHORT : LONG);
+  }
+
+  return IDLE;
+}
+
 uint8_t TOUCH::is_short_long(uint16_t timeout) {
-  uint16_t v = get_touch();
+  uint16_t v = get_data();
   uint8_t finger_present = v > threshold_upper;
   uint8_t finger_change = finger_present != status_finger;
   status_finger = finger_present;
