@@ -54,7 +54,7 @@ int main(void) {
   TOUCH moist(&pin_moisture);
   uint16_t humidity=0;
   while (1) {
-   humidity = moist.get_touch();
+   humidity = moist.get_data();
    DT_I("humidity", humidity);
    _delay_ms(2000);
   }
