@@ -9,8 +9,8 @@ The board can:
 - [ ] send data via RFM95 (otaa mode)
 - [X] notify via LED's
 - [X] control a motor via bridge
-- [ ] output data on ST7735
-- [ ] handle touch sensor (short/long press)
+- [X] output data on ST7735 / SSD1306
+- [X] handle touch sensor (short/long press)
 - [ ] read hall sensor (magnetic switch)
 - [X] measure battery voltage
 - [X] sleep
