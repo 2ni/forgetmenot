@@ -137,20 +137,22 @@ void uart_u2c(char *buf, uint16_t value, uint8_t precision) {
   DT_I("p_write", p_write);
   */
 
-  for (int8_t i=p_write; i>=0; i--) {
-    // DF("i:%i p_read:%i\n", i, p_read);
-    if (!wrote_dot && precision == 0) {
-      wrote_dot = 1;
-      buf[i] = '.';
-    }
-    else if (p_read < 0) {
-      buf[i] = '0';
-    } else {
-      buf[i] = buf[p_read];
-      p_read--;
-    }
+  if (precision) {
+    for (int8_t i=p_write; i>=0; i--) {
+      // DF("i:%i p_read:%i\n", i, p_read);
+      if (!wrote_dot && precision == 0) {
+        wrote_dot = 1;
+        buf[i] = '.';
+      }
+      else if (p_read < 0) {
+        buf[i] = '0';
+      } else {
+        buf[i] = buf[p_read];
+        p_read--;
+      }
 
-    precision--;
+      precision--;
+    }
   }
   buf[p_write+1] = '\0';
 }
