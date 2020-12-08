@@ -46,7 +46,7 @@ void led_toggle(pin_t *led) {
 void led_flash(pin_t *led, uint8_t num) {
   for (uint8_t c=0; c<num; c++) {
     led_on(led);
-    sleep_ms(100);
+    sleep_ms(20);
     led_off(led);
     if (c!= num-1) sleep_ms(100); // no delay if last cycle
   }
