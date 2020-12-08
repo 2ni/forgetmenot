@@ -134,10 +134,11 @@ void ssd1306_char(char c, uint8_t row, uint8_t col) {
   twi_stop();
 }
 
-void ssd1306_text(const char *text, uint8_t row, uint8_t col) {
+uint8_t ssd1306_text(const char *text, uint8_t row, uint8_t col) {
   ssd1306_set_pos(row, col);
   for (uint8_t i=0; i<strlen(text); i++) {
     ssd1306_char(text[i], row, col);
     col += 5+1;
   }
+  return col;
 }
