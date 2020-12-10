@@ -58,7 +58,9 @@ int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
   // _PROTECTED_WRITE(CLKCTRL.MCLKCTRLA, CLKCTRL_CLKOUT_bm); // output clk to PB5
 
-  disable_buffer_of_pins(); // save power except for PC5 (touch), PB0 & PB2 (humidity sensor)
+  // save power except for PC5 (touch), PB0 & PB2 (humidity sensor)
+  // TODO tonr on/off buffer when wakeup/sleep
+  disable_buffer_of_pins();
   PORTC.PIN5CTRL = 0;
   PORTB.PIN0CTRL = 0;
   PORTB.PIN2CTRL = 0;
