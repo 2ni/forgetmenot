@@ -59,8 +59,8 @@ void ssd1306_clear() {  //nn<128x8=1024
 }
 
 /*
- * row is 8 bit high
- * col: 1-128
+ * row: 0-7
+ * col: 0-124 (or 123 depending on char size)
  */
 void ssd1306_clear(uint8_t row, uint8_t col, uint8_t width) {
   ssd1306_set_pos(row, col);
@@ -105,7 +105,7 @@ void ssd1306_dot(uint8_t x, uint8_t y, uint8_t width) {
 }
 
 /*
- * horizontal line on position y
+ * horizontal line on position y: 0-64
  * width: width starting from x=0
  * height: 1-8px
  */
