@@ -17,7 +17,6 @@ class TOUCH {
     TOUCH(pin_t *pin);
     TOUCH(pin_t *pin, uint16_t threshold);
     uint16_t get_data();
-    uint8_t get_data_relative();
     uint8_t is_pressed();
     uint8_t was_pressed();
     uint16_t get_avg();

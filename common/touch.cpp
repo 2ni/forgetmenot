@@ -36,27 +36,6 @@ uint16_t TOUCH::get_avg() {
 }
 
 /*
- * air:  760 (380)
- * 25%:  800
- * 50%:  570
- * 75%:  460
- * 100%: 400 (200)
- *
- * returns value 0-100
- */
-uint8_t TOUCH::get_data_relative() {
-  uint16_t v = get_data();
-  DF("v: %u\n", v);
-
-  v /= 2;  // divide by 2 to avoid overflow on uint16_t
-
-  if (v > 380) v = 380;        // 100% = 760
-  v *= 100;
-
-  return (uint8_t)((38000-v)/200);
-}
-
-/*
  * get touch value of loaded Ct on Csh
  * returns a value between 0-1023
  * the higher the value the higher Ct
@@ -92,9 +71,19 @@ uint16_t TOUCH::get_data() {
   return result;
   */
 
+  uint16_t result;
+
+  (*pin).port_adc->CTRLC = ADC_PRESC_DIV4_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+  (*pin).port_adc->CTRLA = ADC_ENABLE_bm | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
+
+  // for some weird reasons the very 1st adc conversion after sleep is always wrong
+  // so we do one dummy conversion here
+  (*pin).port_adc->COMMAND = ADC_STCONV_bm;
+  while (!((*pin).port_adc->INTFLAGS & ADC_RESRDY_bm));
+  result = (*pin).port_adc->RES;
+
   set_direction(pin, 0);  // set input for high impedance
   set_pullup(pin, 0);     // set pullup to charge attached Ctouch
-  (*pin).port_adc->CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
   (*pin).port_adc->MUXPOS = ADC_MUXPOS_GND_gc; // discharge Csh
   // _delay_us(10); // not needed for touch sensors
   set_pullup(pin, 1);    // disable pullup
@@ -104,10 +93,9 @@ uint16_t TOUCH::get_data() {
   // uint16_t result = get_adc(pin);
   // return result;
   (*pin).port_adc->MUXPOS = ((ADC_MUXPOS_AIN0_gc + (*pin).pin_adc) << 0);
-  (*pin).port_adc->CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
-  (*pin).port_adc->COMMAND |= 1;
+  (*pin).port_adc->COMMAND = ADC_STCONV_bm;
   while (!((*pin).port_adc->INTFLAGS & ADC_RESRDY_bm));
-  uint16_t result = (*pin).port_adc->RES;
+  result = (*pin).port_adc->RES;
 
   return result;
 }
