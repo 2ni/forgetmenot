@@ -118,7 +118,7 @@ int16_t adc2temp(uint16_t adc) {
  * interpolate a value according to a characterstic table
  */
 int16_t interpolate(uint16_t adc, const temp_characteristics_struct *characteristics, uint8_t size) {
-  uint8_t match = size-1;
+  uint8_t match = 255;
   for (uint8_t i=0; i<size; i++) {
     if (adc > characteristics[i].adc) {
       match=i;
@@ -128,7 +128,7 @@ int16_t interpolate(uint16_t adc, const temp_characteristics_struct *characteris
 
   //  adc outside of characteristics, return min or max
   if (match==0) return characteristics[0].temp;
-  else if (match==size-1) return characteristics[size-1].temp;
+  else if (match==255) return characteristics[size-1].temp;
 
   // linear interpolation
   uint16_t temp_start = characteristics[match-1].temp;
