@@ -54,6 +54,24 @@ void oled_screen_calibrating() {
   ssd1306_text("CALIBRATING", 2, 31);
 }
 
+/*
+ * disable input to save power when going to sleep
+ */
+void go_to_sleep() {
+  PORTC.PIN5CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  PORTB.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  PORTB.PIN2CTRL = PORT_ISC_INPUT_DISABLE_gc;
+}
+
+/*
+ * re-activate pins when waking up
+ */
+void wake_up() {
+  PORTC.PIN5CTRL = 0;
+  PORTB.PIN0CTRL = 0;
+  PORTB.PIN2CTRL = 0;
+}
+
 int main(void) {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_2X_gc | CLKCTRL_PEN_bm); // set prescaler to 2 -> 10MHz
   // _PROTECTED_WRITE(CLKCTRL.MCLKCTRLA, CLKCTRL_CLKOUT_bm); // output clk to PB5
@@ -61,9 +79,8 @@ int main(void) {
   // save power except for PC5 (touch), PB0 & PB2 (humidity sensor)
   // TODO tonr on/off buffer when wakeup/sleep
   disable_buffer_of_pins();
-  PORTC.PIN5CTRL = 0;
-  PORTB.PIN0CTRL = 0;
-  PORTB.PIN2CTRL = 0;
+
+  wake_up();
 
   DINIT();
   uint32_t deviceid = get_deviceid();
@@ -134,10 +151,13 @@ int main(void) {
       case SLEEP:
         if (button.is_pressed()) {
           led_flash(&led_g, 1);
+          wake_up();
           ssd1306_on();
           new_mode = button.pressed(TIMEOUT_LONG) == button.LONG ? CALIBRATE : MEASURE;
         } else {
+          go_to_sleep();
           sleep_ms(SLEEP_TIME);
+          wake_up();
         }
         break;
 
@@ -191,7 +211,9 @@ int main(void) {
           DF("Tboard  : %s\n", temp_board);
           DF("Vcc     : %s\n", vcc);
         }
+        go_to_sleep();
         sleep_ms(SLEEP_TIME);
+        wake_up();
 
         button_status = button.pressed(TIMEOUT_LONG); // TODO avoid blocking
         if (button_status == button.SHORT) {
@@ -231,7 +253,9 @@ int main(void) {
           curpos = ssd1306_text(humidity, 3, 64-9);
           ssd1306_text("%", 3, curpos);
         }
+        go_to_sleep();
         sleep_ms(SLEEP_TIME);
+        wake_up();
 
         if (!button.is_pressed()) {
           eeprom_write_byte(&ee_humidity_target, h_rel_target);
