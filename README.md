@@ -79,7 +79,7 @@ mkdir toolchain_microchip/pack
 unzip Atmel.ATtiny_DFP.1.4.283.atpack -d toolchain_microchip/pack/
 ```
 
-2. toolchain_markr42 (more [info](https://www.avrfreaks.net/comment/2839521#comment-2839521)
+2. toolchain_markr42 (more [info](https://www.avrfreaks.net/comment/2839521#comment-2839521))
 I just adapted it to have the binaries locally installed and not in /usr/local/avr (that's what the patch is for)
 ```
 mkdir toolchain_markr42
