@@ -5,6 +5,13 @@
  * send to ttn is not yet possible as sda, scl shared with miso, mosi
  */
 
+/*
+ * TODO
+ * use toolchain from microchip or maybe update markr toolchain fo set_sleep_mode to work
+ * #include <avr/sleep.h>
+ *  set_sleep_mode(SLEEP_MODE_STANDBY);
+ */
+
 #include <avr/eeprom.h>
 
 #include "pins.h"
@@ -27,10 +34,11 @@ enum MODES {
 };
 
 
-#define TIMEOUT_LONG 3000      // ms needed pressing the touch button to get into calibration mode
-#define TIMEOUT_DISPLAY 10000  // ms while the display is on if no interaction
-#define MEASURE_INTERVALL 1000 // ms until data is updated while displayed
-#define SLEEP_TIME 100         // ms while mcu is sleeping in loops
+#define TIMEOUT_LONG 3000               // ms needed pressing the touch button to get into calibration mode
+#define TIMEOUT_DISPLAY 10000           // ms while the display is on if no interaction
+#define MEASURE_INTERVALL 1000          // ms until data is updated while displayed
+#define SLEEP_TIME 50                   // ms while mcu is sleeping in loops
+#define SLEEP_PER UINT32_C(SLEEP_TIME)*1024/1000  // to avoid divisions we calculate the needed timer count beforehand and use an internal function to sleep
 #define _MEASURE_NUMBER MEASURE_INTERVALL/SLEEP_TIME
 #define _DISPLAY_NUMBER TIMEOUT_DISPLAY/MEASURE_INTERVALL
 
@@ -70,6 +78,31 @@ void wake_up() {
   PORTC.PIN5CTRL = 0;
   PORTB.PIN0CTRL = 0;
   PORTB.PIN2CTRL = 0;
+}
+
+// PC5, ADC1, AIN11
+// to make touch check rocket fast, don't use functions and classes
+// 17us
+uint16_t touched() {
+  uint16_t result;
+  ADC1.CTRLC = ADC_PRESC_DIV2_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+  ADC1.CTRLA = ADC_ENABLE_bm | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
+
+  ADC1.COMMAND = ADC_STCONV_bm;
+  while (!ADC1.INTFLAGS & ADC_RESRDY_bm);
+  result = ADC1.RES;
+
+  PORTC.DIRCLR = PIN5_bm;
+  PORTC.PIN5CTRL |= PORT_PULLUPEN_bm; // enable pullup
+  ADC1.MUXPOS = ADC_MUXPOS_GND_gc;
+  _delay_us(5);
+  PORTC.PIN5CTRL &= ~PORT_PULLUPEN_bm; // disable pullup
+
+  ADC1.MUXPOS = ADC_MUXPOS_AIN11_gc;
+  ADC1.COMMAND = ADC_STCONV_bm;
+  while (!ADC1.INTFLAGS & ADC_RESRDY_bm);
+  result = ADC1.RES;
+  return result;
 }
 
 int main(void) {
@@ -117,7 +150,7 @@ int main(void) {
   if (h_rel_target == 255) h_rel_target = 50;
   h_rel_target_last = h_rel_target;
 
-  TOUCH button(&pin_touch);
+  TOUCH button(&pin_touch); // PC5, ADC1, AIN11
   CAPACITIVE moisture(&lcd_blk, &lcd_cs);
 
   /*
@@ -135,6 +168,29 @@ int main(void) {
       // DF("moist: %s%%, temp:%s\n", humidity, temp_board);
       now = millis_time();
     }
+  }
+  */
+
+  /*
+  ssd1306_off();
+  PORTB.DIRSET = PIN4_bm; // RST as output  to trigger oscilloscope
+
+  uint16_t res;
+  uint8_t on = 0;
+  while (1) {
+    PORTB.OUTSET = PIN4_bm;
+    res = touched(); // 2x faster than button.is_pressed()
+    if (res>575 && !on) {
+      on = 1;
+      led_toggle(&led_b);
+      DL("pressed");
+    } else if (res<545) {
+      on = 0;
+    }
+    // led_flash(&led_b, 1);
+    go_to_sleep();
+    _s_sleep(SLEEP_PER, 0);
+    wake_up();
   }
   */
 
@@ -156,7 +212,7 @@ int main(void) {
           new_mode = button.pressed(TIMEOUT_LONG) == button.LONG ? CALIBRATE : MEASURE;
         } else {
           go_to_sleep();
-          sleep_ms(SLEEP_TIME);
+          _s_sleep(SLEEP_PER, 0);
           wake_up();
         }
         break;
@@ -212,7 +268,7 @@ int main(void) {
           DF("Vcc     : %s\n", vcc);
         }
         go_to_sleep();
-        sleep_ms(SLEEP_TIME);
+        _s_sleep(SLEEP_PER, 0);
         wake_up();
 
         button_status = button.pressed(TIMEOUT_LONG); // TODO avoid blocking
@@ -254,7 +310,7 @@ int main(void) {
           ssd1306_text("%", 3, curpos);
         }
         go_to_sleep();
-        sleep_ms(SLEEP_TIME);
+        _s_sleep(SLEEP_PER, 0);
         wake_up();
 
         if (!button.is_pressed()) {
