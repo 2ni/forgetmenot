@@ -85,7 +85,7 @@ int main(void) {
       led_off(&led_g);
     }
 
-    humidity = moist.get_touch();
+    humidity = moist.get_data();
     DT_I("humidity", humidity);
     _delay_ms(500);
 
