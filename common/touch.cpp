@@ -57,23 +57,32 @@ uint16_t TOUCH::get_data() {
    */
 
   /*
-  PORTC.DIRCLR = PIN5_bm; // input
-  PORTC.PIN5CTRL = PORT_PULLUPEN_bm; // pullup
-  ADC1.CTRLC = ADC_PRESC_DIV64_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
-  ADC1.MUXPOS = ADC_MUXPOS_GND_gc; // discharge s/h cap by setting muxpos = gnd
-  _delay_us(10);
-  ADC1.CTRLA = (1<<ADC_ENABLE_bp) | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
-  PORTC.PIN5CTRL = 0; // disable pullup
+  // to make it a bit faster, don't use function calls:
+  // 28us -> 17us
+  uint16_t result;
+  ADC1.CTRLC = ADC_PRESC_DIV2_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+  ADC1.CTRLA = ADC_ENABLE_bm | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
+
+  ADC1.COMMAND = ADC_STCONV_bm;
+  while (!ADC1.INTFLAGS & ADC_RESRDY_bm);
+  result = ADC1.RES;
+
+  PORTC.DIRCLR = PIN5_bm;
+  PORTC.PIN5CTRL |= PORT_PULLUPEN_bm; // enable pullup
+  ADC1.MUXPOS = ADC_MUXPOS_GND_gc;
+  _delay_us(5);
+  PORTC.PIN5CTRL &= ~PORT_PULLUPEN_bm; // disable pullup
+
   ADC1.MUXPOS = ADC_MUXPOS_AIN11_gc;
-  ADC1.COMMAND |= 1;
-  while (!(ADC1.INTFLAGS & ADC_RESRDY_bm));
-  uint16_t result = ADC1.RES;
+  ADC1.COMMAND = ADC_STCONV_bm;
+  while (!ADC1.INTFLAGS & ADC_RESRDY_bm);
+  result = ADC1.RES;
   return result;
   */
 
   uint16_t result;
 
-  (*pin).port_adc->CTRLC = ADC_PRESC_DIV4_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
+  (*pin).port_adc->CTRLC = ADC_PRESC_DIV2_gc | ADC_REFSEL_VDDREF_gc | (0<<ADC_SAMPCAP_bp);
   (*pin).port_adc->CTRLA = ADC_ENABLE_bm | (0<<ADC_FREERUN_bp) | ADC_RESSEL_10BIT_gc;
 
   // for some weird reasons the very 1st adc conversion after sleep is always wrong
