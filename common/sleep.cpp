@@ -40,12 +40,13 @@ ISR(RTC_CNT_vect) {
  * ...
  * 9 -> :512
  */
-void _s_common(uint16_t per, uint8_t prescaler) {
-  while (RTC.STATUS > 0) {}             // wait for all register to be synchronized
+void _s_sleep(uint16_t per, uint8_t prescaler) {
+  while (RTC.STATUS > 0);             // wait for all register to be synchronized
 
-  RTC.CTRLA = (prescaler<<3) | RTC_RTCEN_bm | RTC_RUNSTDBY_bm;
-  RTC.INTCTRL = (1 << RTC_OVF_bp);      // overflow interrupt
   RTC.CLKSEL = RTC_CLKSEL_INT1K_gc;     // 32.768kHz / 32 -> 1024Hz
+  RTC.PER = per;
+  RTC.INTCTRL = (1 << RTC_OVF_bp);      // overflow interrupt
+  RTC.CTRLA = (prescaler<<3) | RTC_RTCEN_bm | RTC_RUNSTDBY_bm;
 
   /*
   _PROTECTED_WRITE(CLKCTRL.XOSC32KCTRLA, CLKCTRL_ENABLE_bm | CLKCTRL_RUNSTDBY_bm); // external crystal, runstdby, enable
@@ -54,19 +55,17 @@ void _s_common(uint16_t per, uint8_t prescaler) {
   RTC.CLKSEL = RTC_CLKSEL_TOSC32K_gc | CLKCTRL_ENABLE_bm;
   */
 
-  RTC.PER = per;
   RTC.CNT = 0;
-
-  // set count to avoid side effects
-  // on multiple calls and
-  // on initial call (ie 1st call correct, 2nd call 1sec too long)
-  while (RTC.STATUS > 0) {}
-  RTC.CNT = 1;
 
   sei();
 
   SLPCTRL.CTRLA = (SLPCTRL_SMODE_STDBY_gc | SLPCTRL_SEN_bm); // idle, standby or power down
   asm("sleep");
+
+  // while (RTC.STATUS > 0); // somehow this blocks ~1ms and things still work if commented out
+  // seems that resetting CLKSEL and CTRLA make the inital RTC.STATUS faster
+  RTC.CLKSEL = 0;
+  RTC.CTRLA = 0; // turn off RTC
 }
 
 /*
@@ -76,9 +75,11 @@ void _s_common(uint16_t per, uint8_t prescaler) {
  * (precision: 1000/1024 = 0.9765625 per bit)
  * max 2^16bit
  *
+ * division is slow! if you need speed, use _s_sleep() and precalculate per
+ *
  */
 void sleep_ms(uint16_t ms) {
-  _s_common(((uint32_t)ms*1024)/1000, 0);
+  _s_sleep(((uint32_t)ms*1024)/1000, 0);
 }
 
 /* prescaler 1024
@@ -87,5 +88,5 @@ void sleep_ms(uint16_t ms) {
  * max 2^16bit
  */
 void sleep_s(uint16_t seconds) {
-  _s_common(seconds, 0xa);
+  _s_sleep(seconds, 0xa);
 }
