@@ -1,4 +1,4 @@
-! PLEASE check the newer version [apricot](https://github.com/2ni/apricot)
+# **!!! PLEASE check the newer version [apricot](https://github.com/2ni/apricot) !!!**
 
 ### purpose
 This is the software used for my forgetmenot board based on ATtiny3217 (alternative ATtiny1617, ATtiny817).
